@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 async function fetchShows(tmName, stateCode) {
   const key = tmName + '__' + (stateCode || 'US');
