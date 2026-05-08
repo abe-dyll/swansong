@@ -133,6 +133,86 @@ const ARTISTS = [
   { name: 'Engelbert Humperdinck', genre: 'Pop', tmName: 'Engelbert Humperdinck',
     members: [{ name: 'Engelbert Humperdinck', age: 88 }],
     songs: ['Release Me', 'After the Lovin\'', 'Am I That Easy to Forget'] },
+
+  // ── ROCK additions ──
+  { name: 'Ozzy Osbourne', genre: 'Rock', tmName: 'Ozzy Osbourne',
+    members: [{ name: 'Ozzy Osbourne', age: 76 }],
+    songs: ['Crazy Train', 'Mr. Crowley', 'Paranoid'] },
+  { name: 'Robert Plant', genre: 'Rock', tmName: 'Robert Plant',
+    members: [{ name: 'Robert Plant', age: 76 }],
+    songs: ['Whole Lotta Love', 'Stairway to Heaven', 'Kashmir'] },
+  { name: 'Graham Nash', genre: 'Rock', tmName: 'Graham Nash',
+    members: [{ name: 'Graham Nash', age: 83 }],
+    songs: ['Teach Your Children', 'Our House', 'Just a Song Before I Go'] },
+  { name: 'Todd Rundgren', genre: 'Rock', tmName: 'Todd Rundgren',
+    members: [{ name: 'Todd Rundgren', age: 76 }],
+    songs: ['Hello It\'s Me', 'I Saw the Light', 'Bang the Drum All Day'] },
+  { name: 'Steve Miller', genre: 'Rock', tmName: 'Steve Miller Band',
+    members: [{ name: 'Steve Miller', age: 81 }],
+    songs: ['The Joker', 'Fly Like an Eagle', 'Rock\'n Me'] },
+  { name: 'Peter Frampton', genre: 'Rock', tmName: 'Peter Frampton',
+    members: [{ name: 'Peter Frampton', age: 75 }],
+    songs: ['Show Me the Way', 'Baby I Love Your Way', 'Do You Feel Like We Do'] },
+  { name: 'Don McLean', genre: 'Rock', tmName: 'Don McLean',
+    members: [{ name: 'Don McLean', age: 79 }],
+    songs: ['American Pie', 'Vincent', 'Crying'] },
+  { name: 'Steely Dan', genre: 'Rock', tmName: 'Steely Dan',
+    members: [{ name: 'Donald Fagen', age: 76 }],
+    songs: ['Reelin\' in the Years', 'Rikki Don\'t Lose That Number', 'Deacon Blues'] },
+  { name: 'Heart', genre: 'Rock', tmName: 'Heart',
+    members: [{ name: 'Ann Wilson', age: 74 }, { name: 'Nancy Wilson', age: 70 }],
+    songs: ['Crazy on You', 'Barracuda', 'Magic Man'] },
+  { name: 'Pat Benatar', genre: 'Rock', tmName: 'Pat Benatar',
+    members: [{ name: 'Pat Benatar', age: 72 }, { name: 'Neil Giraldo', age: 70 }],
+    songs: ['Hit Me with Your Best Shot', 'Love is a Battlefield', 'Heartbreaker'] },
+  { name: 'Foreigner', genre: 'Rock', tmName: 'Foreigner',
+    members: [{ name: 'Mick Jones', age: 79 }],
+    songs: ['I Want to Know What Love Is', 'Cold as Ice', 'Hot Blooded'] },
+  { name: 'Journey', genre: 'Rock', tmName: 'Journey',
+    members: [{ name: 'Neal Schon', age: 71 }, { name: 'Jonathan Cain', age: 73 }],
+    songs: ['Don\'t Stop Believin\'', 'Open Arms', 'Faithfully'] },
+  { name: 'Fleetwood Mac', genre: 'Rock', tmName: 'Fleetwood Mac',
+    members: [{ name: 'Mick Fleetwood', age: 77 }, { name: 'John McVie', age: 79 }, { name: 'Stevie Nicks', age: 76 }],
+    songs: ['Go Your Own Way', 'The Chain', 'Dreams'] },
+  { name: 'Stevie Nicks', genre: 'Rock', tmName: 'Stevie Nicks',
+    members: [{ name: 'Stevie Nicks', age: 76 }],
+    songs: ['Edge of Seventeen', 'Stand Back', 'Stop Draggin\' My Heart Around'] },
+  { name: 'Cyndi Lauper', genre: 'Rock', tmName: 'Cyndi Lauper',
+    members: [{ name: 'Cyndi Lauper', age: 71 }],
+    songs: ['Girls Just Want to Have Fun', 'Time After Time', 'True Colors'] },
+  { name: 'Bryan Adams', genre: 'Rock', tmName: 'Bryan Adams',
+    members: [{ name: 'Bryan Adams', age: 65 }],
+    songs: ['Summer of \'69', 'Run to You', 'Everything I Do'] },
+  { name: 'John Mellencamp', genre: 'Rock', tmName: 'John Mellencamp',
+    members: [{ name: 'John Mellencamp', age: 73 }],
+    songs: ['Jack & Diane', 'Hurts So Good', 'Pink Houses'] },
+  { name: 'Tom Waits', genre: 'Rock', tmName: 'Tom Waits',
+    members: [{ name: 'Tom Waits', age: 75 }],
+    songs: ['Jersey Girl', 'Downtown Train', 'Tom Traubert\'s Blues'] },
+
+  // ── COUNTRY additions ──
+
+  // ── SOUL / R&B additions ──
+  { name: 'Earth Wind & Fire', genre: 'Soul/R&B', tmName: 'Earth Wind and Fire',
+    members: [{ name: 'Philip Bailey', age: 73 }, { name: 'Ralph Johnson', age: 75 }],
+    songs: ['September', 'Shining Star', 'Boogie Wonderland'] },
+  { name: 'The Isley Brothers', genre: 'Soul/R&B', tmName: 'Isley Brothers',
+    members: [{ name: 'Ronald Isley', age: 82 }, { name: 'Ernie Isley', age: 72 }],
+    songs: ['Shout', 'It\'s Your Thing', 'Who\'s That Lady'] },
+  { name: 'Four Tops', genre: 'Soul/R&B', tmName: 'Four Tops',
+    members: [{ name: 'Duke Fakir', age: 88 }],
+    songs: ['I Can\'t Help Myself', 'Reach Out I\'ll Be There', 'Bernadette'] },
+  { name: 'The Temptations', genre: 'Soul/R&B', tmName: 'The Temptations',
+    members: [{ name: 'Otis Williams', age: 82 }],
+    songs: ['My Girl', 'Papa Was a Rollin\' Stone', 'Just My Imagination'] },
+
+  // ── POP additions ──
+  { name: 'Julio Iglesias', genre: 'Pop', tmName: 'Julio Iglesias',
+    members: [{ name: 'Julio Iglesias', age: 81 }],
+    songs: ['To All the Girls I\'ve Loved Before', 'Hey', 'Begin the Beguine'] },
+  { name: 'Wayne Newton', genre: 'Pop', tmName: 'Wayne Newton',
+    members: [{ name: 'Wayne Newton', age: 83 }],
+    songs: ['Danke Schoen', 'Red Roses for a Blue Lady', 'Daddy Don\'t You Walk So Fast'] },
 ];
 
 const GENRES = ['Rock', 'Country', 'Jazz', 'Soul/R&B', 'Pop'];
@@ -142,8 +222,8 @@ const GENRE_COLORS = {
 };
 
 function ageColor(age) {
-  if (age >= 85) return '#b03a2e';
-  if (age >= 78) return '#9a7d0a';
+  if (age >= 80) return '#b03a2e';
+  if (age >= 72) return '#9a7d0a';
   return '#1e8449';
 }
 
@@ -477,7 +557,7 @@ export default function SwanSong() {
       } }, 'See them while you still can.'),
 
       React.createElement('div', { style: { display: 'flex', justifyContent: 'center', gap: 28, flexWrap: 'wrap' } },
-        [['#b03a2e','85+'],['#9a7d0a','78-84'],['#1e8449','70-77']].map(function(item) {
+        [['#b03a2e','80+'],['#9a7d0a','72-79'],['#1e8449','65-71']].map(function(item) {
           return React.createElement('div', { key: item[1], style: { display: 'flex', alignItems: 'center', gap: 8 } },
             React.createElement('div', { style: { width: 11, height: 11, borderRadius: '50%', background: item[0] } }),
             React.createElement('span', { style: { fontSize: 14, color: '#8a6a50', fontWeight: 500 } }, item[1])
