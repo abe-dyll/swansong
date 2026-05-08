@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const ARTISTS = [
   { name: 'The Rolling Stones', genre: 'Rock', tmName: 'Rolling Stones',
@@ -161,25 +161,24 @@ function ageColor(age) {
 
 var fetchCache = {};
 
-function buildUrl(artist, opts) {
-  var params = 'artist=' + encodeURIComponent(artist);
+function buildUrl(tmName, displayName, opts) {
+  var params = 'artist=' + encodeURIComponent(tmName) + '&artistDisplay=' + encodeURIComponent(displayName);
   if (opts && opts.lat && opts.lng) {
     params += '&lat=' + opts.lat + '&lng=' + opts.lng + '&radius=' + (opts.radius || 50);
-  } else if (opts && opts.state) {
-    params += '&state=' + opts.state;
   }
   return '/.netlify/functions/shows?' + params;
 }
 
-async function fetchShows(tmName, opts) {
+async function fetchShows(tmName, displayName, opts) {
   var key = tmName + '__' + JSON.stringify(opts || {});
   if (fetchCache[key] !== undefined) return fetchCache[key];
   try {
-    var res = await fetch(buildUrl(tmName, opts));
+    var res = await fetch(buildUrl(tmName, displayName, opts));
     if (!res.ok) throw new Error(res.status);
-    var shows = await res.json();
-    fetchCache[key] = Array.isArray(shows) ? shows : [];
-    return fetchCache[key];
+    var data = await res.json();
+    var shows = Array.isArray(data) ? data : [];
+    fetchCache[key] = shows;
+    return shows;
   } catch (err) {
     fetchCache[key] = [];
     return [];
@@ -206,9 +205,10 @@ async function geocodeZip(zip) {
 function PriceDisplay(props) {
   var level = props.level;
   if (!level) return null;
-  return React.createElement('span', { style: { fontSize: 12, letterSpacing: '0.02em' } },
+  return React.createElement('div', { style: { fontSize: 13, letterSpacing: '0.03em', lineHeight: 1 } },
     [1,2,3,4].map(function(i) {
-      return React.createElement('span', { key: i, style: { color: i <= level ? '#8B6914' : '#ddd', fontWeight: 700 } }, '$');
+      return React.createElement('span', { key: i,
+        style: { color: i <= level ? '#8B6914' : '#d4c0a0', fontWeight: 900, fontSize: 14 } }, '$');
     })
   );
 }
@@ -222,15 +222,16 @@ function ShowCard(props) {
   if (!show.state && show.country && show.country !== 'United States Of America') {
     location = [show.city, show.country].filter(Boolean).join(', ');
   }
+
   return React.createElement('a', {
     href: show.url, target: '_blank', rel: 'noopener noreferrer',
-    style: { display: 'block', textDecoration: 'none', padding: '12px 14px', borderRadius: 10,
+    style: { display: 'block', textDecoration: 'none', padding: '13px 15px', borderRadius: 10,
       background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(139,105,20,0.18)',
-      marginBottom: 8, transition: 'all 0.15s', cursor: 'pointer' },
+      marginBottom: 8, transition: 'all 0.15s' },
     onMouseEnter: function(e) {
       e.currentTarget.style.background = 'rgba(255,255,255,0.95)';
       e.currentTarget.style.borderColor = '#8B6914';
-      e.currentTarget.style.boxShadow = '0 3px 12px rgba(139,105,20,0.15)';
+      e.currentTarget.style.boxShadow = '0 3px 14px rgba(139,105,20,0.18)';
     },
     onMouseLeave: function(e) {
       e.currentTarget.style.background = 'rgba(255,255,255,0.65)';
@@ -240,17 +241,26 @@ function ShowCard(props) {
   },
     React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 } },
       React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-        React.createElement('div', { style: { fontSize: 14, fontWeight: 700, color: '#8B6914', marginBottom: 3, fontFamily: 'Playfair Display, serif' } }, dateStr),
-        React.createElement('div', { style: { fontSize: 14, color: '#2c1810', fontWeight: 600, marginBottom: 2 } }, location),
-        React.createElement('div', { style: { fontSize: 13, color: '#6a4f38', marginBottom: show.tourName && show.tourName !== 'Music' ? 2 : 0,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, show.venue),
-        show.tourName && show.tourName !== 'Music' &&
-          React.createElement('div', { style: { fontSize: 12, color: '#9a7d5a', fontStyle: 'italic' } }, show.tourName)
+
+        // Concert name — prominent at top
+        React.createElement('div', { style: { fontSize: 14, fontWeight: 700, color: '#2c1810',
+          fontFamily: 'Playfair Display, serif', marginBottom: 5, lineHeight: 1.3 } }, show.eventName),
+
+        // Date
+        React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#8B6914', marginBottom: 3 } }, dateStr),
+
+        // City, State
+        React.createElement('div', { style: { fontSize: 13, color: '#5a3d28', fontWeight: 500, marginBottom: 2 } }, location),
+
+        // Venue
+        React.createElement('div', { style: { fontSize: 12, color: '#9a7d5a',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, show.venue)
       ),
-      React.createElement('div', { style: { flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 } },
+      React.createElement('div', { style: { flexShrink: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'flex-end', gap: 6, paddingTop: 2 } },
         React.createElement(PriceDisplay, { level: show.priceLevel }),
-        React.createElement('div', { style: { fontSize: 11, color: '#fff', background: '#8B6914',
-          borderRadius: 6, padding: '3px 8px', fontWeight: 700, letterSpacing: '0.06em', whiteSpace: 'nowrap' } },
+        React.createElement('div', { style: { fontSize: 10, color: '#fff', background: '#8B6914',
+          borderRadius: 5, padding: '4px 8px', fontWeight: 700, letterSpacing: '0.07em', whiteSpace: 'nowrap' } },
           'GET TICKETS'
         )
       )
@@ -265,20 +275,23 @@ function ArtistRow(props) {
   var locationLabel = props.locationLabel;
   var locationOpts = props.locationOpts;
   var [entry, setEntry] = useState(null);
+  var [loadKey, setLoadKey] = useState('');
+
+  var currentKey = artist.tmName + '__' + JSON.stringify(locationOpts || {});
+
+  useEffect(function() {
+    if (!expanded) return;
+    if (currentKey === loadKey && entry !== null) return;
+    setLoadKey(currentKey);
+    setEntry({ loading: true, shows: null });
+    fetchShows(artist.tmName, artist.name, locationOpts || null).then(function(shows) {
+      setEntry({ loading: false, shows: shows });
+    });
+  }, [expanded, currentKey]);
 
   var maxAge = Math.max.apply(null, artist.members.map(function(m) { return m.age; }));
   var ac = ageColor(maxAge);
   var isSolo = artist.members.length === 1;
-
-  useEffect(function() {
-    if (!expanded) return;
-    if (entry !== null) return;
-    setEntry({ loading: true, shows: null });
-    fetchShows(artist.tmName, locationOpts || null).then(function(shows) {
-      setEntry({ loading: false, shows: shows });
-    });
-  }, [expanded, artist.tmName, JSON.stringify(locationOpts)]);
-
   var shows = entry ? entry.shows : null;
   var loading = entry ? entry.loading : false;
   var hasShows = shows && shows.length > 0;
@@ -305,7 +318,7 @@ function ArtistRow(props) {
       ),
       hasShows && React.createElement('div', {
         style: { flexShrink: 0, background: '#c0392b', color: 'white', borderRadius: 20,
-          fontSize: 12, fontWeight: 700, padding: '3px 10px', marginRight: 4 } },
+          fontSize: 12, fontWeight: 700, padding: '3px 10px', marginRight: 6, whiteSpace: 'nowrap' } },
         shows.length + ' show' + (shows.length !== 1 ? 's' : '')
       ),
       isSolo && React.createElement('div', {
@@ -315,7 +328,7 @@ function ArtistRow(props) {
         React.createElement('span', { style: { fontSize: 17, fontWeight: 700, color: ac,
           fontFamily: 'Playfair Display, serif' } }, maxAge)
       ),
-      React.createElement('span', { style: { fontSize: 16, color: '#b08a50', flexShrink: 0,
+      React.createElement('span', { style: { fontSize: 18, color: '#b08a50', flexShrink: 0,
         transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' } }, '\u25be')
     ),
     expanded && React.createElement('div', { style: { padding: '4px 20px 18px 38px', borderTop: '1px solid rgba(139,105,20,0.1)' } },
@@ -336,7 +349,7 @@ function ArtistRow(props) {
           locationLabel ? 'Shows near ' + locationLabel : 'Upcoming Shows Worldwide'
         ),
         loading && React.createElement('div', { style: { fontSize: 14, color: '#b08a50', fontStyle: 'italic', padding: '8px 0' } }, 'Searching for shows...'),
-        !loading && shows && shows.length > 0 && shows.map(function(s, i) { return React.createElement(ShowCard, { key: i, show: s }); }),
+        !loading && hasShows && shows.map(function(s, i) { return React.createElement(ShowCard, { key: i, show: s }); }),
         !loading && shows && shows.length === 0 && React.createElement('div', {
           style: { fontSize: 14, color: '#c4a882', fontStyle: 'italic', padding: '6px 0' } },
           'No upcoming shows found' + (locationLabel ? ' near ' + locationLabel : '') + '.'
@@ -355,7 +368,6 @@ export default function SwanSong() {
   var [geoLoading, setGeoLoading] = useState(false);
   var [search, setSearch] = useState('');
   var [expanded, setExpanded] = useState({});
-  var [expandKey, setExpandKey] = useState(0);
 
   var locationOpts = geoInfo ? { lat: geoInfo.lat, lng: geoInfo.lng, radius: radius } : null;
   var locationLabel = geoInfo ? geoInfo.city + ', ' + geoInfo.state : null;
@@ -366,17 +378,29 @@ export default function SwanSong() {
     setGeoLoading(true);
     setGeoError('');
     var info = await geocodeZip(zipInput);
-    setGeoLoading(false);
-    if (!info) { setGeoError('ZIP code not found.'); return; }
+    if (!info) { setGeoLoading(false); setGeoError('ZIP code not found. Try another.'); return; }
+    fetchCache = {};
     setGeoInfo(info);
     setExpanded({});
-    setExpandKey(function(k) { return k + 1; });
+
+    // Pre-fetch all artists in background so location filter can hide no-show artists
+    var opts = { lat: info.lat, lng: info.lng, radius: radius };
+    var scope = genreFilter ? ARTISTS.filter(function(a) { return a.genre === genreFilter; }) : ARTISTS;
+    var fetches = scope.map(function(artist) {
+      return fetchShows(artist.tmName, artist.name, opts);
+    });
+    // Re-render as results come in so artists fade out progressively
+    fetches.forEach(function(p) {
+      p.then(function() { setGeoInfo(function(prev) { return prev ? Object.assign({}, prev) : prev; }); });
+    });
+    await Promise.all(fetches);
+    setGeoLoading(false);
   }
 
   function clearLocation() {
     setGeoInfo(null); setZipInput(''); setGeoError('');
     setExpanded({});
-    setExpandKey(function(k) { return k + 1; });
+    fetchCache = {};
   }
 
   function setGenreFn(g) {
@@ -402,9 +426,15 @@ export default function SwanSong() {
            Math.max.apply(null, a.members.map(function(m) { return m.age; }));
   });
 
+  // When location is active, hide artists whose shows have loaded with 0 results
   var visibleArtists = allSorted.filter(function(a) {
     if (genreFilter && a.genre !== genreFilter) return false;
     if (search && a.name.toLowerCase().indexOf(search.toLowerCase()) === -1) return false;
+    if (geoInfo) {
+      var cached = fetchCache[a.tmName + '__' + JSON.stringify(locationOpts || {})];
+      // If loaded and empty, hide. If not yet loaded or still loading, keep visible.
+      if (cached !== undefined && cached.length === 0) return false;
+    }
     return true;
   });
 
@@ -413,17 +443,16 @@ export default function SwanSong() {
       background: 'linear-gradient(160deg, #fdf6e3 0%, #f5e6c8 40%, #ede0c4 100%)', color: '#2c1810' }
   },
     React.createElement('style', null, `
-      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400;1,600&display=swap');
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { background: #fdf6e3; }
       @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .fade { animation: fadeUp 0.35s ease both; }
       input::placeholder { color: #c4a882; }
       button:focus { outline: none; }
-      .tagline { font-family: 'Playfair Display', serif; font-size: clamp(18px, 3vw, 26px); font-style: italic; color: #5a3a10; letter-spacing: 0.04em; line-height: 1.4; }
-      .tagline span { color: #8B6914; font-weight: 700; font-style: normal; }
     `),
 
+    // HERO
     React.createElement('div', {
       style: { textAlign: 'center', padding: '52px 24px 36px',
         background: 'linear-gradient(180deg, rgba(139,105,20,0.1) 0%, transparent 100%)',
@@ -439,13 +468,21 @@ export default function SwanSong() {
       ),
       React.createElement('h1', { style: { fontSize: 'clamp(52px, 10vw, 96px)', fontWeight: 900,
         fontFamily: 'Playfair Display, serif', letterSpacing: '-0.02em', lineHeight: 1,
-        color: '#2c1810', marginBottom: 14,
-        textShadow: '2px 3px 0px rgba(139,105,20,0.2)' } }, 'Swan Song'),
-      React.createElement('p', { className: 'tagline', style: { marginBottom: 28 } },
-        'Don\'t let your favorite legend play their ',
-        React.createElement('span', null, 'last show'),
-        ' without you.'
-      ),
+        color: '#2c1810', marginBottom: 16, textShadow: '2px 3px 0px rgba(139,105,20,0.2)' } }, 'Swan Song'),
+
+      // Tagline — original words, Cormorant Garamond, larger, spaced
+      React.createElement('p', { style: {
+        fontFamily: 'Cormorant Garamond, Georgia, serif',
+        fontSize: 'clamp(20px, 3vw, 30px)',
+        fontWeight: 300,
+        fontStyle: 'italic',
+        color: '#6b4c2a',
+        letterSpacing: '0.06em',
+        lineHeight: 1.5,
+        marginBottom: 28,
+        textShadow: '0 1px 2px rgba(139,105,20,0.1)'
+      } }, 'See them while you still can.'),
+
       React.createElement('div', { style: { display: 'flex', justifyContent: 'center', gap: 28, flexWrap: 'wrap' } },
         [['#b03a2e','85+'],['#9a7d0a','78-84'],['#1e8449','70-77']].map(function(item) {
           return React.createElement('div', { key: item[1], style: { display: 'flex', alignItems: 'center', gap: 8 } },
@@ -456,6 +493,7 @@ export default function SwanSong() {
       )
     ),
 
+    // FILTER BAR
     React.createElement('div', {
       style: { background: 'rgba(255,250,235,0.97)', borderBottom: '1px solid rgba(139,105,20,0.15)',
         position: 'sticky', top: 0, zIndex: 100, padding: '16px 24px' }
@@ -485,12 +523,13 @@ export default function SwanSong() {
             placeholder: 'ZIP code', value: zipInput, maxLength: 5,
             onChange: function(e) { setZipInput(e.target.value.replace(/\D/g, '')); },
             onKeyDown: function(e) { if (e.key === 'Enter') handleZipSubmit(); },
-            style: { width: 90, background: 'rgba(255,255,255,0.85)', border: '1.5px solid rgba(139,105,20,0.3)',
-              color: '#2c1810', borderRadius: 8, padding: '7px 10px', fontSize: 14, outline: 'none' }
+            style: { width: 88, background: 'rgba(255,255,255,0.85)',
+              border: '1.5px solid rgba(139,105,20,0.3)', color: '#2c1810',
+              borderRadius: 8, padding: '7px 10px', fontSize: 14, outline: 'none' }
           }),
           React.createElement('select', {
             value: radius,
-            onChange: function(e) { setRadius(parseInt(e.target.value)); setExpanded({}); setExpandKey(function(k) { return k+1; }); },
+            onChange: function(e) { setRadius(parseInt(e.target.value)); fetchCache = {}; setExpanded({}); },
             style: { background: 'rgba(255,255,255,0.85)', border: '1.5px solid rgba(139,105,20,0.25)',
               color: '#5a3a10', borderRadius: 8, padding: '7px 12px', fontSize: 14, cursor: 'pointer', outline: 'none' }
           },
@@ -502,17 +541,17 @@ export default function SwanSong() {
             onClick: handleZipSubmit,
             disabled: geoLoading || zipInput.length < 5,
             style: { padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              border: 'none', background: zipInput.length >= 5 ? '#8B6914' : '#c4a882',
+              border: 'none', background: zipInput.length >= 5 ? '#8B6914' : '#c4b080',
               color: 'white', cursor: zipInput.length < 5 ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }
-          }, geoLoading ? 'Finding...' : 'Search'),
-          geoInfo && React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6,
-            background: 'rgba(139,105,20,0.1)', borderRadius: 8, padding: '5px 12px',
-            border: '1px solid rgba(139,105,20,0.25)' } },
+          }, geoLoading ? 'Searching...' : 'Search'),
+          geoInfo && React.createElement('div', {
+            style: { display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(139,105,20,0.1)',
+              borderRadius: 8, padding: '6px 12px', border: '1px solid rgba(139,105,20,0.25)' } },
             React.createElement('span', { style: { fontSize: 13, color: '#5a3a10', fontWeight: 600 } },
               locationLabel + ' / ' + radius + ' mi'),
             React.createElement('button', { onClick: clearLocation,
               style: { background: 'none', border: 'none', cursor: 'pointer', color: '#8B6914',
-                fontSize: 16, lineHeight: 1, padding: '0 0 0 4px', fontWeight: 700 } }, 'x')
+                fontSize: 16, fontWeight: 700, lineHeight: 1, padding: '0 0 0 4px' } }, 'x')
           ),
           geoError && React.createElement('span', { style: { fontSize: 13, color: '#c0392b', fontWeight: 500 } }, geoError),
           React.createElement('input', {
@@ -530,18 +569,22 @@ export default function SwanSong() {
       )
     ),
 
+    // CONTENT
     React.createElement('div', { style: { maxWidth: 1100, margin: '0 auto', padding: '28px 24px 80px' } },
       React.createElement('p', { style: { textAlign: 'center', fontSize: 15, color: '#a08060',
         fontStyle: 'italic', marginBottom: 28, lineHeight: 1.9 } },
-        !filterActive
-          ? 'Click any artist to see their songs and upcoming shows. Enter a ZIP code to find shows near you.'
-          : visibleArtists.length + ' artist' + (visibleArtists.length !== 1 ? 's' : '') +
-            (genreFilter ? ' in ' + genreFilter : '') +
-            (locationLabel ? ' near ' + locationLabel : '')
+        filterActive
+          ? (geoLoading
+              ? 'Searching for shows near ' + locationLabel + '...'
+              : visibleArtists.length + ' artist' + (visibleArtists.length !== 1 ? 's' : '') +
+                (genreFilter ? ' in ' + genreFilter : '') +
+                (locationLabel ? ' with shows near ' + locationLabel + ' within ' + radius + ' mi' : '') +
+                ' — click any to expand')
+          : 'Click any artist to see their songs and upcoming shows worldwide. Enter a ZIP to find shows near you.'
       ),
       React.createElement('div', { style: { columns: '2 310px', gap: 12 } },
         visibleArtists.map(function(artist, i) {
-          return React.createElement('div', { key: artist.name + '__' + expandKey, className: 'fade',
+          return React.createElement('div', { key: artist.name, className: 'fade',
             style: { breakInside: 'avoid', animationDelay: Math.min(i * 0.02, 0.4) + 's' } },
             React.createElement(ArtistRow, {
               artist: artist,
