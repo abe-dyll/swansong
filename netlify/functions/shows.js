@@ -13,9 +13,7 @@ function attractionMatches(attractions, artistName) {
   var normArtist = normalize(artistName);
   for (var i = 0; i < attractions.length; i++) {
     var normAttraction = normalize(attractions[i].name || '');
-    // Exact match or very close match on the attraction name
     if (normAttraction === normArtist) return true;
-    // Artist name is fully contained in attraction name or vice versa
     if (normAttraction.indexOf(normArtist) !== -1) return true;
     if (normArtist.indexOf(normAttraction) !== -1 && normAttraction.length > 4) return true;
   }
@@ -26,6 +24,7 @@ exports.handler = async function(event) {
   var params = event.queryStringParameters || {};
   var artist = params.artist;
   var artistDisplay = params.artistDisplay || artist;
+  var tmId = params.tmId; // hardcoded attraction ID if provided
   var lat = params.lat;
   var lng = params.lng;
   var radius = params.radius || "50";
@@ -41,40 +40,36 @@ exports.handler = async function(event) {
     locationParam = "&countryCode=US";
   }
 
-  // First: look up the attraction ID for this artist
-  var attractionUrl = "https://app.ticketmaster.com/discovery/v2/attractions.json"
-    + "?keyword=" + encodeURIComponent(artist)
-    + "&classificationName=music"
-    + "&size=5"
-    + "&apikey=" + TM_KEY;
+  var attractionId = tmId || null;
 
-  var attractionId = null;
-  try {
-    var aRes = await fetch(attractionUrl);
-    var aData = await aRes.json();
-    var attractions = (aData && aData._embedded && aData._embedded.attractions) ? aData._embedded.attractions : [];
-    // Find the attraction whose name best matches our artist
-    var normArtist = normalize(artistDisplay);
-    for (var i = 0; i < attractions.length; i++) {
-      var normName = normalize(attractions[i].name || '');
-      if (normName === normArtist) {
-        attractionId = attractions[i].id;
-        break;
+  // If no hardcoded ID, look up the attraction ID
+  if (!attractionId) {
+    var attractionUrl = "https://app.ticketmaster.com/discovery/v2/attractions.json"
+      + "?keyword=" + encodeURIComponent(artist)
+      + "&classificationName=music"
+      + "&size=5"
+      + "&apikey=" + TM_KEY;
+
+    try {
+      var aRes = await fetch(attractionUrl);
+      var aData = await aRes.json();
+      var attractions = (aData && aData._embedded && aData._embedded.attractions) ? aData._embedded.attractions : [];
+      var normArtist = normalize(artistDisplay);
+
+      // Only accept exact name match for attraction ID — no partial matches
+      for (var i = 0; i < attractions.length; i++) {
+        var normName = normalize(attractions[i].name || '');
+        if (normName === normArtist) {
+          attractionId = attractions[i].id;
+          break;
+        }
       }
+    } catch (e) {
+      // Fall through to keyword search
     }
-    // Fallback: first result if no exact match
-    if (!attractionId && attractions.length > 0) {
-      var first = normalize(attractions[0].name || '');
-      // Only use if reasonably close
-      if (first.indexOf(normArtist) !== -1 || normArtist.indexOf(first) !== -1) {
-        attractionId = attractions[0].id;
-      }
-    }
-  } catch (e) {
-    // Fall through to keyword search
   }
 
-  // Second: search events by attraction ID if found, otherwise keyword
+  // Search events by attraction ID (clean) or keyword (fallback)
   var eventsUrl;
   if (attractionId) {
     eventsUrl = "https://app.ticketmaster.com/discovery/v2/events.json"
@@ -102,11 +97,9 @@ exports.handler = async function(event) {
     var shows = [];
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
-      var eventName = e.name || "";
       var eventAttractions = e._embedded && e._embedded.attractions;
 
-      // If we searched by attraction ID, results are already clean
-      // If we fell back to keyword, verify via attractions array
+      // For keyword fallback only: verify attraction matches
       if (!attractionId) {
         if (!attractionMatches(eventAttractions, artistDisplay)) continue;
       }
@@ -125,7 +118,7 @@ exports.handler = async function(event) {
       shows.push({
         date: e.dates && e.dates.start && e.dates.start.localDate,
         time: e.dates && e.dates.start && e.dates.start.localTime,
-        eventName: eventName,
+        eventName: e.name || "",
         venue: venue && venue.name,
         city: venue && venue.city && venue.city.name,
         state: venue && venue.state && venue.state.stateCode,
