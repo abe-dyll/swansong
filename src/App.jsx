@@ -204,11 +204,16 @@ async function geocodeZip(zip) {
 
 function PriceDisplay(props) {
   var level = props.level;
-  if (!level) return null;
-  return React.createElement('div', { style: { fontSize: 13, letterSpacing: '0.03em', lineHeight: 1 } },
+  // Show ? when price unknown, $-$$$$ when known
+  if (!level) {
+    return React.createElement('div', {
+      style: { fontSize: 11, color: '#c4a882', fontWeight: 600, letterSpacing: '0.04em' }
+    }, 'price ?');
+  }
+  return React.createElement('div', { style: { fontSize: 14, letterSpacing: '0.01em', lineHeight: 1 } },
     [1,2,3,4].map(function(i) {
       return React.createElement('span', { key: i,
-        style: { color: i <= level ? '#8B6914' : '#d4c0a0', fontWeight: 900, fontSize: 14 } }, '$');
+        style: { color: i <= level ? '#8B6914' : '#e0d0b0', fontWeight: 900 } }, '$');
     })
   );
 }
