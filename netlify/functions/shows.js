@@ -1,7 +1,13 @@
 const TM_KEY = "NVPeiOI6iUQOfiXXxGjRdYPUIBedQmBy";
 
-// Words that indicate a tribute/impersonator show even if artist name is present
-var TRIBUTE_WORDS = ["tribute", "starring", "experience", "legacy", "salute", "impersonat", "celebration of", "the music of", "songs of", "piano men"];
+// Words that always indicate a tribute/impersonator — block regardless of artist name match
+var TRIBUTE_WORDS = [
+  "tribute", "starring", "experience", "legacy", "salute",
+  "impersonat", "celebration of", "the music of", "songs of",
+  "piano men", "a night of", "night of", "birthday bash",
+  "birthday celebration", "birthday party", "years of",
+  "the story of", "vs.", "presents:", "best of"
+];
 
 function isBadMatch(eventName, artistName) {
   var lower = eventName.toLowerCase();
