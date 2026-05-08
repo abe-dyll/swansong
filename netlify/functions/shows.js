@@ -1,10 +1,15 @@
 const TM_KEY = "NVPeiOI6iUQOfiXXxGjRdYPUIBedQmBy";
 
+// Words that indicate a tribute/impersonator show even if artist name is present
+var TRIBUTE_WORDS = ["tribute", "starring", "experience", "legacy", "salute", "impersonat", "celebration of", "the music of", "songs of", "piano men"];
+
 function isBadMatch(eventName, artistName) {
   var lower = eventName.toLowerCase();
 
-  // Always block anything with tribute in the name
-  if (lower.indexOf("tribute") !== -1) return true;
+  // Block if any tribute indicator word is present
+  for (var i = 0; i < TRIBUTE_WORDS.length; i++) {
+    if (lower.indexOf(TRIBUTE_WORDS[i]) !== -1) return true;
+  }
 
   // Event must contain at least one significant word from the artist name
   var artistWords = artistName.toLowerCase()
@@ -12,8 +17,8 @@ function isBadMatch(eventName, artistName) {
     .split(" ")
     .filter(function(w) { return w.length > 2; });
 
-  for (var i = 0; i < artistWords.length; i++) {
-    if (lower.indexOf(artistWords[i]) !== -1) return false;
+  for (var j = 0; j < artistWords.length; j++) {
+    if (lower.indexOf(artistWords[j]) !== -1) return false;
   }
 
   // No artist name word found in event title - reject it
