@@ -10,7 +10,7 @@ const ARTISTS = [
   { name: 'The Who', genre: 'Rock', tmName: 'The Who',
     members: [{ name: 'Roger Daltrey', age: 80 }, { name: 'Pete Townshend', age: 79 }],
     songs: ['Baba O\'Riley', 'Won\'t Get Fooled Again', 'My Generation'] },
-  { name: 'Bob Dylan', genre: 'Rock', tmName: 'Bob Dylan',
+  { name: 'Bob Dylan', genre: 'Rock', tmName: 'Bob Dylan', tmId: '734972',
     members: [{ name: 'Bob Dylan', age: 83 }],
     songs: ['Blowin\' in the Wind', 'Like a Rolling Stone', 'The Times They Are A-Changin\''] },
   { name: 'Paul McCartney', genre: 'Rock', tmName: 'Paul McCartney',
@@ -229,19 +229,20 @@ function ageColor(age) {
 
 var fetchCache = {};
 
-function buildUrl(tmName, displayName, opts) {
+function buildUrl(tmName, displayName, tmId, opts) {
   var params = 'artist=' + encodeURIComponent(tmName) + '&artistDisplay=' + encodeURIComponent(displayName);
+  if (tmId) params += '&tmId=' + encodeURIComponent(tmId);
   if (opts && opts.lat && opts.lng) {
     params += '&lat=' + opts.lat + '&lng=' + opts.lng + '&radius=' + (opts.radius || 50);
   }
   return '/.netlify/functions/shows?' + params;
 }
 
-async function fetchShows(tmName, displayName, opts) {
-  var key = tmName + '__' + JSON.stringify(opts || {});
+async function fetchShows(tmName, displayName, tmId, opts) {
+  var key = tmName + '__' + (tmId || '') + '__' + JSON.stringify(opts || {});
   if (fetchCache[key] !== undefined) return fetchCache[key];
   try {
-    var res = await fetch(buildUrl(tmName, displayName, opts));
+    var res = await fetch(buildUrl(tmName, displayName, tmId, opts));
     if (!res.ok) throw new Error(res.status);
     var data = await res.json();
     var shows = Array.isArray(data) ? data : [];
@@ -357,7 +358,7 @@ function ArtistRow(props) {
     if (currentKey === loadKey && entry !== null) return;
     setLoadKey(currentKey);
     setEntry({ loading: true, shows: null });
-    fetchShows(artist.tmName, artist.name, locationOpts || null).then(function(shows) {
+    fetchShows(artist.tmName, artist.name, artist.tmId || null, locationOpts || null).then(function(shows) {
       setEntry({ loading: false, shows: shows });
     });
   }, [expanded, currentKey]);
@@ -460,7 +461,7 @@ export default function SwanSong() {
     var opts = { lat: info.lat, lng: info.lng, radius: radius };
     var scope = genreFilter ? ARTISTS.filter(function(a) { return a.genre === genreFilter; }) : ARTISTS;
     var fetches = scope.map(function(artist) {
-      return fetchShows(artist.tmName, artist.name, opts);
+      return fetchShows(artist.tmName, artist.name, artist.tmId || null, opts);
     });
     // Re-render as results come in so artists fade out progressively
     fetches.forEach(function(p) {
