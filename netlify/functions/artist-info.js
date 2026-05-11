@@ -18,23 +18,34 @@ async function getSpotifyToken() {
 async function searchArtist(token, artistName) {
   var url = "https://api.spotify.com/v1/search"
     + "?q=" + encodeURIComponent(artistName)
-    + "&type=artist&limit=5";
+    + "&type=artist&limit=10";
   var res = await fetch(url, {
     headers: { "Authorization": "Bearer " + token }
   });
   var data = await res.json();
   var artists = (data && data.artists && data.artists.items) || [];
+  if (artists.length === 0) return null;
 
-  // Find best match — exact name match preferred
-  var normTarget = artistName.toLowerCase().trim();
-  for (var i = 0; i < artists.length; i++) {
-    if (artists[i].name.toLowerCase().trim() === normTarget) {
-      return artists[i];
-    }
+  var normTarget = artistName.toLowerCase().replace(/^the /, '').trim();
+
+  // Among exact name matches, pick the one with the most followers
+  // This ensures we get the real Bob Dylan not a tribute act
+  var exactMatches = artists.filter(function(a) {
+    return a.name.toLowerCase().replace(/^the /, '').trim() === normTarget;
+  });
+
+  if (exactMatches.length > 0) {
+    exactMatches.sort(function(a, b) {
+      return (b.followers && b.followers.total || 0) - (a.followers && a.followers.total || 0);
+    });
+    return exactMatches[0];
   }
-  // Fallback: first result with reasonable follower count
-  if (artists.length > 0) return artists[0];
-  return null;
+
+  // No exact match — return highest follower count result
+  artists.sort(function(a, b) {
+    return (b.followers && b.followers.total || 0) - (a.followers && a.followers.total || 0);
+  });
+  return artists[0];
 }
 
 async function getTopTracks(token, artistId) {
@@ -68,26 +79,23 @@ exports.handler = async function(event) {
 
     var topTracks = await getTopTracks(token, artist.id);
 
-    // Return top 3 tracks
     var tracks = topTracks.slice(0, 3).map(function(t) {
       return {
         name: t.name,
         popularity: t.popularity,
+        previewUrl: t.preview_url || null,
         spotifyUrl: t.external_urls && t.external_urls.spotify,
         albumName: t.album && t.album.name,
         albumImage: t.album && t.album.images && t.album.images[2] && t.album.images[2].url
       };
     });
 
-    // Spotify genres are on the artist object
-    var genres = artist.genres || [];
-
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({
         tracks: tracks,
-        genres: genres,
+        genres: artist.genres || [],
         followers: artist.followers && artist.followers.total,
         spotifyUrl: artist.external_urls && artist.external_urls.spotify,
         image: artist.images && artist.images[1] && artist.images[1].url
