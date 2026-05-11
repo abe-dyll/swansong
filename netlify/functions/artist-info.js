@@ -49,10 +49,18 @@ async function searchArtist(token, artistName) {
 }
 
 async function getTopTracks(token, artistId) {
-  var url = "https://api.spotify.com/v1/artists/" + artistId + "/top-tracks?market=US";
+  var url = "https://api.spotify.com/v1/artists/" + artistId + "/top-tracks";
   var res = await fetch(url, {
-    headers: { "Authorization": "Bearer " + token }
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
   });
+  if (!res.ok) {
+    console.error("Top tracks error:", res.status, await res.text());
+    return [];
+  }
   var data = await res.json();
   return (data && data.tracks) || [];
 }
