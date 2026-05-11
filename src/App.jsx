@@ -230,12 +230,34 @@ function ageColor(age) {
 var fetchCache = {};
 var spotifyCache = {};
 
-async function fetchSpotifyInfo(artistName) {
+// Genre-normalized score store
+// Tracks max playcount per genre across all loaded artists
+var genreMaxPlaycount = {};
+
+function updateGenreMax(genre, playcount) {
+  if (!genreMaxPlaycount[genre] || playcount > genreMaxPlaycount[genre]) {
+    genreMaxPlaycount[genre] = playcount;
+  }
+}
+
+function getGenreScore(genre, playcount) {
+  var max = genreMaxPlaycount[genre];
+  if (!max || max === 0) return null;
+  return Math.round((playcount / max) * 100);
+}
+
+async function fetchSpotifyInfo(artistName, genre) {
   if (spotifyCache[artistName] !== undefined) return spotifyCache[artistName];
   try {
     var res = await fetch('/api/artist-info?artist=' + encodeURIComponent(artistName));
     if (!res.ok) throw new Error(res.status);
     var data = await res.json();
+    // Update genre max playcount for normalization
+    if (data && data.tracks && genre) {
+      data.tracks.forEach(function(t) {
+        if (t.playcount) updateGenreMax(genre, t.playcount);
+      });
+    }
     spotifyCache[artistName] = data;
     return data;
   } catch (err) {
@@ -290,26 +312,22 @@ async function geocodeZip(zip) {
 
 function TrackRow(props) {
   var track = props.track;
-  var ac = props.ac;
-  return React.createElement('a', {
-    href: track.url, target: '_blank', rel: 'noopener noreferrer',
+  var genre = props.genre;
+  var score = track.playcount ? getGenreScore(genre, track.playcount) : null;
+
+  return React.createElement('div', {
     style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 7,
-      textDecoration: 'none', padding: '8px 12px', borderRadius: 8,
-      background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(139,105,20,0.1)',
-      transition: 'all 0.15s' },
-    onMouseEnter: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = '#d4243a'; },
-    onMouseLeave: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(139,105,20,0.1)'; }
+      padding: '8px 12px', borderRadius: 8,
+      background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(139,105,20,0.1)' }
   },
-    React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: '#d4243a', style: { flexShrink: 0 } },
-      React.createElement('path', { d: 'M10.584 17.21l-.88-2.392s-1.43 1.596-3.573 1.596c-1.897 0-3.244-1.652-3.244-4.297 0-3.381 1.704-4.596 3.381-4.596 2.418 0 3.188 1.566 3.849 3.574l.88 2.392c.88 2.64 2.528 4.76 7.287 4.76 3.409 0 5.74-1.047 5.74-3.793 0-2.22-1.267-3.37-3.629-3.921l-1.76-.385c-1.213-.275-1.567-.77-1.567-1.595 0-.935.742-1.485 1.954-1.485 1.32 0 2.033.495 2.143 1.677l2.75-.33C23.64 6.33 22.15 5 19.317 5c-2.584 0-4.814 1.1-4.814 3.959 0 1.876.99 3.079 3.464 3.684l1.87.44c1.374.33 1.594.88 1.594 1.705 0 1.017-.99 1.43-2.97 1.43-2.859 0-4.05-1.54-4.73-3.63l-.88-2.42C12.267 7.19 10.55 5 6.473 5 2.2 5 0 7.89 0 12.227 0 16.4 2.09 19 6.308 19c3.354 0 4.276-1.79 4.276-1.79z' })
-    ),
     React.createElement('div', { style: { flex: 1, minWidth: 0 } },
       React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#2c1810',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, track.name)
     ),
-    track.playcountDisplay && React.createElement('div', { style: { flexShrink: 0, textAlign: 'right' } },
-      React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#8B6914' } }, track.playcountDisplay),
-      React.createElement('div', { style: { fontSize: 8, color: '#b08a50', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 1 } }, 'plays')
+    score != null && React.createElement('div', { style: { flexShrink: 0, textAlign: 'right' } },
+      React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#8B6914' } }, score),
+      React.createElement('div', { style: { fontSize: 8, color: '#b08a50', letterSpacing: '0.05em',
+        textTransform: 'uppercase', marginTop: 1 } }, 'in ' + genre)
     )
   );
 }
@@ -395,7 +413,7 @@ function ArtistRow(props) {
     if (!expanded) return;
     if (spotifyInfo !== null || spotifyLoading) return;
     setSpotifyLoading(true);
-    fetchSpotifyInfo(artist.name).then(function(info) {
+    fetchSpotifyInfo(artist.name, artist.genre).then(function(info) {
       setSpotifyInfo(info);
       setSpotifyLoading(false);
     });
@@ -447,12 +465,20 @@ function ArtistRow(props) {
       React.createElement('div', { style: { marginTop: 14, marginBottom: 16 } },
         React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
           React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b08a50' } }, 'Top Songs'),
-          spotifyInfo && spotifyInfo.listeners && React.createElement('div', { style: { fontSize: 10, color: '#d4243a', fontWeight: 600 } }, spotifyInfo.listeners)
+          spotifyInfo && spotifyInfo.spotifyUrl && React.createElement('a', {
+            href: spotifyInfo.spotifyUrl, target: '_blank', rel: 'noopener noreferrer',
+            style: { display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }
+          },
+            React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: '#1DB954' },
+              React.createElement('path', { d: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z' })
+            ),
+            React.createElement('span', { style: { fontSize: 10, color: '#1DB954', fontWeight: 700, letterSpacing: '0.06em' } }, 'SPOTIFY')
+          )
         ),
         spotifyLoading && React.createElement('div', { style: { fontSize: 12, color: '#b08a50', fontStyle: 'italic' } }, 'Loading...'),
         !spotifyLoading && spotifyInfo && spotifyInfo.tracks && spotifyInfo.tracks.length > 0
           ? spotifyInfo.tracks.map(function(track, i) {
-              return React.createElement(TrackRow, { key: track.name, track: track, ac: ac });
+              return React.createElement(TrackRow, { key: track.name, track: track, ac: ac, genre: artist.genre });
             })
           : !spotifyLoading && React.createElement('div', null,
               artist.songs.map(function(s, i) {
@@ -736,9 +762,19 @@ export default function SwanSong() {
       )
     ),
 
-    React.createElement('div', { style: { textAlign: 'center', padding: '0 0 36px',
-      fontSize: 12, color: '#c4a882', letterSpacing: '0.1em', fontWeight: 500 } },
-      'SWAN SONG  -  SEE THEM WHILE YOU CAN  -  POWERED BY TICKETMASTER'
+    React.createElement('div', { style: { textAlign: 'center', padding: '0 24px 48px', maxWidth: 700, margin: '0 auto' } },
+      React.createElement('div', { style: { fontSize: 12, color: '#c4a882', letterSpacing: '0.1em',
+        fontWeight: 500, marginBottom: 16 } },
+        'SWAN SONG  -  SEE THEM WHILE YOU CAN  -  POWERED BY TICKETMASTER'
+      ),
+      React.createElement('div', { style: { fontSize: 11, color: '#b8a898', lineHeight: 1.7,
+        fontStyle: 'italic', borderTop: '1px solid rgba(139,105,20,0.15)', paddingTop: 16 } },
+        React.createElement('span', { style: { fontWeight: 700, fontStyle: 'normal', color: '#8B6914' } }, 'Song Score '),
+        'is a relative popularity rating from 0-100 based on total play counts sourced from Last.fm, ' +
+        'a music tracking platform that has logged over 20 years of listening data across Spotify, Apple Music, and other streaming services. ' +
+        'Scores are normalized within each genre — a score of 100 means the most-played song in that genre among our artist catalog. ' +
+        'Scores update as more artists in the same genre are loaded.'
+      )
     )
   );
 }
