@@ -448,7 +448,7 @@ function ArtistRow(props) {
         React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
           React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b08a50' } }, 'Top Songs'),
           spotifyInfo && spotifyInfo.listeners && React.createElement('div', { style: { fontSize: 10, color: '#d4243a', fontWeight: 600 } }, spotifyInfo.listeners)
-        ),,
+        ),
         spotifyLoading && React.createElement('div', { style: { fontSize: 12, color: '#b08a50', fontStyle: 'italic' } }, 'Loading...'),
         !spotifyLoading && spotifyInfo && spotifyInfo.tracks && spotifyInfo.tracks.length > 0
           ? spotifyInfo.tracks.map(function(track, i) {
