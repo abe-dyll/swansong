@@ -233,7 +233,7 @@ var spotifyCache = {};
 async function fetchSpotifyInfo(artistName) {
   if (spotifyCache[artistName] !== undefined) return spotifyCache[artistName];
   try {
-    var res = await fetch('/.netlify/functions/artist-info?artist=' + encodeURIComponent(artistName));
+    var res = await fetch('/api/artist-info?artist=' + encodeURIComponent(artistName));
     if (!res.ok) throw new Error(res.status);
     var data = await res.json();
     spotifyCache[artistName] = data;
@@ -250,7 +250,7 @@ function buildUrl(tmName, displayName, tmId, opts) {
   if (opts && opts.lat && opts.lng) {
     params += '&lat=' + opts.lat + '&lng=' + opts.lng + '&radius=' + (opts.radius || 50);
   }
-  return '/.netlify/functions/shows?' + params;
+  return '/api/shows?' + params;
 }
 
 async function fetchShows(tmName, displayName, tmId, opts) {
@@ -288,127 +288,32 @@ async function geocodeZip(zip) {
 
 
 
-// Global audio manager - only one preview plays at a time
-var currentAudio = null;
-
 function TrackRow(props) {
   var track = props.track;
   var ac = props.ac;
-  var [playing, setPlaying] = React.useState(false);
-  var [progress, setProgress] = React.useState(0);
-  var audioRef = React.useRef(null);
-
-  function togglePlay(e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!track.previewUrl) return;
-
-    // Stop any other playing audio
-    if (currentAudio && currentAudio !== audioRef.current) {
-      currentAudio.pause();
-      currentAudio = null;
-    }
-
-    if (!audioRef.current) {
-      audioRef.current = new Audio(track.previewUrl);
-      audioRef.current.addEventListener('timeupdate', function() {
-        setProgress((audioRef.current.currentTime / 30) * 100);
-      });
-      audioRef.current.addEventListener('ended', function() {
-        setPlaying(false);
-        setProgress(0);
-        currentAudio = null;
-      });
-    }
-
-    if (playing) {
-      audioRef.current.pause();
-      currentAudio = null;
-      setPlaying(false);
-    } else {
-      audioRef.current.play();
-      currentAudio = audioRef.current;
-      setPlaying(true);
-    }
-  }
-
-  // Cleanup on unmount
-  React.useEffect(function() {
-    return function() {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        if (currentAudio === audioRef.current) currentAudio = null;
-      }
-    };
-  }, []);
-
   return React.createElement('a', {
-    href: track.spotifyUrl, target: '_blank', rel: 'noopener noreferrer',
+    href: track.url, target: '_blank', rel: 'noopener noreferrer',
     style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 7,
-      textDecoration: 'none', padding: '7px 10px', borderRadius: 8,
+      textDecoration: 'none', padding: '8px 12px', borderRadius: 8,
       background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(139,105,20,0.1)',
       transition: 'all 0.15s' },
-    onMouseEnter: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = '#1DB954'; },
+    onMouseEnter: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = '#d4243a'; },
     onMouseLeave: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(139,105,20,0.1)'; }
   },
-    // Album art
-    track.albumImage && React.createElement('img', {
-      src: track.albumImage, alt: track.albumName,
-      style: { width: 36, height: 36, borderRadius: 4, flexShrink: 0, objectFit: 'cover' }
-    }),
-
-    // Track name + album
+    React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: '#d4243a', style: { flexShrink: 0 } },
+      React.createElement('path', { d: 'M10.584 17.21l-.88-2.392s-1.43 1.596-3.573 1.596c-1.897 0-3.244-1.652-3.244-4.297 0-3.381 1.704-4.596 3.381-4.596 2.418 0 3.188 1.566 3.849 3.574l.88 2.392c.88 2.64 2.528 4.76 7.287 4.76 3.409 0 5.74-1.047 5.74-3.793 0-2.22-1.267-3.37-3.629-3.921l-1.76-.385c-1.213-.275-1.567-.77-1.567-1.595 0-.935.742-1.485 1.954-1.485 1.32 0 2.033.495 2.143 1.677l2.75-.33C23.64 6.33 22.15 5 19.317 5c-2.584 0-4.814 1.1-4.814 3.959 0 1.876.99 3.079 3.464 3.684l1.87.44c1.374.33 1.594.88 1.594 1.705 0 1.017-.99 1.43-2.97 1.43-2.859 0-4.05-1.54-4.73-3.63l-.88-2.42C12.267 7.19 10.55 5 6.473 5 2.2 5 0 7.89 0 12.227 0 16.4 2.09 19 6.308 19c3.354 0 4.276-1.79 4.276-1.79z' })
+    ),
     React.createElement('div', { style: { flex: 1, minWidth: 0 } },
       React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#2c1810',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, track.name),
-      React.createElement('div', { style: { fontSize: 11, color: '#9a7d5a', marginTop: 1, fontStyle: 'italic',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, track.albumName || '')
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, track.name)
     ),
-
-    // Preview button
-    track.previewUrl && React.createElement('button', {
-      onClick: togglePlay,
-      style: { flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
-        background: playing ? '#1DB954' : 'rgba(29,185,84,0.15)',
-        border: '1.5px solid #1DB954', cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s', position: 'relative', overflow: 'hidden' }
-    },
-      // Progress ring when playing
-      playing && React.createElement('svg', {
-        style: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)' },
-        viewBox: '0 0 28 28'
-      },
-        React.createElement('circle', {
-          cx: '14', cy: '14', r: '12',
-          fill: 'none', stroke: '#fff', strokeWidth: '2',
-          strokeDasharray: '75.4',
-          strokeDashoffset: 75.4 - (75.4 * progress / 100),
-          style: { transition: 'stroke-dashoffset 0.1s' }
-        })
-      ),
-      // Play/pause icon
-      React.createElement('span', { style: { fontSize: playing ? 9 : 10, color: playing ? '#fff' : '#1DB954',
-        position: 'relative', zIndex: 1, lineHeight: 1, marginLeft: playing ? 0 : 1 } },
-        playing ? '❚❚' : '▶'
-      )
-    ),
-
-    // Popularity score
-    track.popularity != null && React.createElement('div', { style: { flexShrink: 0, textAlign: 'center', minWidth: 28 } },
-      React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#8B6914', lineHeight: 1 } }, track.popularity),
-      React.createElement('div', { style: { fontSize: 8, color: '#b08a50', letterSpacing: '0.06em',
-        textTransform: 'uppercase', marginTop: 2 } }, 'pop')
-    ),
-
-    // Spotify icon
-    React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: '#1DB954',
-      style: { flexShrink: 0, opacity: 0.8 } },
-      React.createElement('path', { d: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z' })
+    track.playcountDisplay && React.createElement('div', { style: { flexShrink: 0, textAlign: 'right' } },
+      React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#8B6914' } }, track.playcountDisplay),
+      React.createElement('div', { style: { fontSize: 8, color: '#b08a50', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 1 } }, 'plays')
     )
   );
 }
+
 
 function ShowCard(props) {
   var show = props.show;
@@ -541,19 +446,9 @@ function ArtistRow(props) {
     expanded && React.createElement('div', { style: { padding: '4px 20px 18px 38px', borderTop: '1px solid rgba(139,105,20,0.1)' } },
       React.createElement('div', { style: { marginTop: 14, marginBottom: 16 } },
         React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
-          React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-            textTransform: 'uppercase', color: '#b08a50' } }, 'Top Songs'),
-          spotifyInfo && spotifyInfo.spotifyUrl && React.createElement('a', {
-            href: spotifyInfo.spotifyUrl, target: '_blank', rel: 'noopener noreferrer',
-            style: { fontSize: 10, color: '#1DB954', fontWeight: 700, textDecoration: 'none',
-              letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 4 }
-          },
-            React.createElement('svg', { width: 12, height: 12, viewBox: '0 0 24 24', fill: '#1DB954' },
-              React.createElement('path', { d: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z' })
-            ),
-            'SPOTIFY'
-          )
-        ),
+          React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b08a50' } }, 'Top Songs'),
+          spotifyInfo && spotifyInfo.listeners && React.createElement('div', { style: { fontSize: 10, color: '#d4243a', fontWeight: 600 } }, spotifyInfo.listeners)
+        ),,
         spotifyLoading && React.createElement('div', { style: { fontSize: 12, color: '#b08a50', fontStyle: 'italic' } }, 'Loading...'),
         !spotifyLoading && spotifyInfo && spotifyInfo.tracks && spotifyInfo.tracks.length > 0
           ? spotifyInfo.tracks.map(function(track, i) {
@@ -561,7 +456,8 @@ function ArtistRow(props) {
             })
           : !spotifyLoading && React.createElement('div', null,
               artist.songs.map(function(s, i) {
-                return React.createElement('div', { key: s, style: { display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 5 } },
+                return React.createElement('div', { key: s,
+                  style: { display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 5 } },
                   React.createElement('span', { style: { fontSize: 12, color: ac + '88', fontWeight: 700, minWidth: 14 } }, i + 1),
                   React.createElement('span', { style: { fontSize: 14, color: '#5a3d28', fontStyle: 'italic',
                     fontFamily: 'Playfair Display, serif' } }, s)
