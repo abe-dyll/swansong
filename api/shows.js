@@ -8,7 +8,6 @@ function normalize(str) {
     .trim();
 }
 
-// Returns true if the event's attractions contain an exact match for our artist
 function eventHasArtist(eventAttractions, artistName) {
   if (!eventAttractions || eventAttractions.length === 0) return false;
   var normArtist = normalize(artistName);
@@ -19,8 +18,8 @@ function eventHasArtist(eventAttractions, artistName) {
   return false;
 }
 
-exports.handler = async function(event) {
-  var params = event.queryStringParameters || {};
+module.exports = async function handler(req, res) {
+  var params = req.query || {};
   var artist = params.artist;
   var artistDisplay = params.artistDisplay || artist;
   var tmId = params.tmId;
@@ -29,7 +28,7 @@ exports.handler = async function(event) {
   var radius = params.radius || "50";
 
   if (!artist) {
-    return { statusCode: 400, body: JSON.stringify({ error: "Missing artist param" }) };
+    return res.status(400).json({ error: "Missing artist param" });
   }
 
   var locationParam = lat && lng
@@ -38,7 +37,6 @@ exports.handler = async function(event) {
 
   var attractionId = tmId || null;
 
-  // Step 1: Look up attraction ID if not hardcoded
   if (!attractionId) {
     try {
       var aUrl = "https://app.ticketmaster.com/discovery/v2/attractions.json"
@@ -49,17 +47,23 @@ exports.handler = async function(event) {
       var attractions = (aData && aData._embedded && aData._embedded.attractions) || [];
       var normArtist = normalize(artistDisplay);
 
-      // Strict: only accept if normalized attraction name is an exact match
-      for (var i = 0; i < attractions.length; i++) {
-        if (normalize(attractions[i].name || '') === normArtist) {
-          attractionId = attractions[i].id;
-          break;
-        }
+      var exactMatches = attractions.filter(function(a) {
+        return normalize(a.name || '') === normArtist;
+      });
+
+      if (exactMatches.length === 1) {
+        attractionId = exactMatches[0].id;
+      } else if (exactMatches.length > 1) {
+        exactMatches.sort(function(a, b) {
+          var aCount = (a.upcomingEvents && a.upcomingEvents._total) || 0;
+          var bCount = (b.upcomingEvents && b.upcomingEvents._total) || 0;
+          return bCount - aCount;
+        });
+        attractionId = exactMatches[0].id;
       }
     } catch (e) {}
   }
 
-  // Step 2: Fetch events
   var eventsUrl = attractionId
     ? "https://app.ticketmaster.com/discovery/v2/events.json"
         + "?attractionId=" + attractionId
@@ -71,31 +75,20 @@ exports.handler = async function(event) {
         + locationParam + "&apikey=" + TM_KEY;
 
   try {
-    var res = await fetch(eventsUrl);
-    var data = await res.json();
+    var evRes = await fetch(eventsUrl);
+    var data = await evRes.json();
     var events = (data && data._embedded && data._embedded.events) || [];
 
     var shows = [];
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
 
-      // When using attraction ID search, results are already clean
-      // When falling back to keyword, enforce strict attraction name match
       if (!attractionId) {
         var eventAttractions = e._embedded && e._embedded.attractions;
         if (!eventHasArtist(eventAttractions, artistDisplay)) continue;
       }
 
       var venue = e._embedded && e._embedded.venues && e._embedded.venues[0];
-      var priceRanges = e.priceRanges && e.priceRanges[0];
-      var priceLevel = null;
-      if (priceRanges && priceRanges.min) {
-        var min = priceRanges.min;
-        if (min < 40) priceLevel = 1;
-        else if (min < 80) priceLevel = 2;
-        else if (min < 150) priceLevel = 3;
-        else priceLevel = 4;
-      }
 
       shows.push({
         date: e.dates && e.dates.start && e.dates.start.localDate,
@@ -105,19 +98,14 @@ exports.handler = async function(event) {
         city: venue && venue.city && venue.city.name,
         state: venue && venue.state && venue.state.stateCode,
         country: venue && venue.country && venue.country.name,
-        priceLevel: priceLevel,
         url: e.url
       });
 
       if (shows.length >= 5) break;
     }
 
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify(shows)
-    };
+    return res.status(200).json(shows);
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return res.status(500).json({ error: err.message });
   }
-};
+}
