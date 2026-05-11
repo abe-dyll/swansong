@@ -10,7 +10,7 @@ const ARTISTS = [
   { name: 'The Who', genre: 'Rock', tmName: 'The Who',
     members: [{ name: 'Roger Daltrey', age: 80 }, { name: 'Pete Townshend', age: 79 }],
     songs: ['Baba O\'Riley', 'Won\'t Get Fooled Again', 'My Generation'] },
-  { name: 'Bob Dylan', genre: 'Rock', tmName: 'Bob Dylan', tmId: '734972',
+  { name: 'Bob Dylan', genre: 'Rock', tmName: 'Bob Dylan',
     members: [{ name: 'Bob Dylan', age: 83 }],
     songs: ['Blowin\' in the Wind', 'Like a Rolling Stone', 'The Times They Are A-Changin\''] },
   { name: 'Paul McCartney', genre: 'Rock', tmName: 'Paul McCartney',
@@ -228,6 +228,21 @@ function ageColor(age) {
 }
 
 var fetchCache = {};
+var spotifyCache = {};
+
+async function fetchSpotifyInfo(artistName) {
+  if (spotifyCache[artistName] !== undefined) return spotifyCache[artistName];
+  try {
+    var res = await fetch('/.netlify/functions/artist-info?artist=' + encodeURIComponent(artistName));
+    if (!res.ok) throw new Error(res.status);
+    var data = await res.json();
+    spotifyCache[artistName] = data;
+    return data;
+  } catch (err) {
+    spotifyCache[artistName] = null;
+    return null;
+  }
+}
 
 function buildUrl(tmName, displayName, tmId, opts) {
   var params = 'artist=' + encodeURIComponent(tmName) + '&artistDisplay=' + encodeURIComponent(displayName);
@@ -350,6 +365,8 @@ function ArtistRow(props) {
   var locationOpts = props.locationOpts;
   var [entry, setEntry] = useState(null);
   var [loadKey, setLoadKey] = useState('');
+  var [spotifyInfo, setSpotifyInfo] = useState(null);
+  var [spotifyLoading, setSpotifyLoading] = useState(false);
 
   var currentKey = artist.tmName + '__' + JSON.stringify(locationOpts || {});
 
@@ -362,6 +379,16 @@ function ArtistRow(props) {
       setEntry({ loading: false, shows: shows });
     });
   }, [expanded, currentKey]);
+
+  useEffect(function() {
+    if (!expanded) return;
+    if (spotifyInfo !== null || spotifyLoading) return;
+    setSpotifyLoading(true);
+    fetchSpotifyInfo(artist.name).then(function(info) {
+      setSpotifyInfo(info);
+      setSpotifyLoading(false);
+    });
+  }, [expanded]);
 
   var maxAge = Math.max.apply(null, artist.members.map(function(m) { return m.age; }));
   var ac = ageColor(maxAge);
@@ -407,15 +434,59 @@ function ArtistRow(props) {
     ),
     expanded && React.createElement('div', { style: { padding: '4px 20px 18px 38px', borderTop: '1px solid rgba(139,105,20,0.1)' } },
       React.createElement('div', { style: { marginTop: 14, marginBottom: 16 } },
-        React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-          textTransform: 'uppercase', color: '#b08a50', marginBottom: 8 } }, 'Known For'),
-        artist.songs.map(function(s, i) {
-          return React.createElement('div', { key: s, style: { display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 5 } },
-            React.createElement('span', { style: { fontSize: 12, color: ac + '88', fontWeight: 700, minWidth: 14 } }, i + 1),
-            React.createElement('span', { style: { fontSize: 15, color: '#5a3d28', fontStyle: 'italic',
-              fontFamily: 'Playfair Display, serif' } }, s)
-          );
-        })
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
+          React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+            textTransform: 'uppercase', color: '#b08a50' } }, 'Top Songs'),
+          spotifyInfo && spotifyInfo.spotifyUrl && React.createElement('a', {
+            href: spotifyInfo.spotifyUrl, target: '_blank', rel: 'noopener noreferrer',
+            style: { fontSize: 10, color: '#1DB954', fontWeight: 700, textDecoration: 'none',
+              letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 4 }
+          },
+            React.createElement('svg', { width: 12, height: 12, viewBox: '0 0 24 24', fill: '#1DB954' },
+              React.createElement('path', { d: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z' })
+            ),
+            'SPOTIFY'
+          )
+        ),
+        spotifyLoading && React.createElement('div', { style: { fontSize: 12, color: '#b08a50', fontStyle: 'italic' } }, 'Loading...'),
+        !spotifyLoading && spotifyInfo && spotifyInfo.tracks && spotifyInfo.tracks.length > 0
+          ? spotifyInfo.tracks.map(function(track, i) {
+              return React.createElement('a', {
+                key: track.name,
+                href: track.spotifyUrl,
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 7,
+                  textDecoration: 'none', padding: '7px 10px', borderRadius: 8,
+                  background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(139,105,20,0.1)',
+                  transition: 'all 0.15s' },
+                onMouseEnter: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = '#1DB954'; },
+                onMouseLeave: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(139,105,20,0.1)'; }
+              },
+                track.albumImage && React.createElement('img', {
+                  src: track.albumImage, alt: track.albumName,
+                  style: { width: 32, height: 32, borderRadius: 4, flexShrink: 0, objectFit: 'cover' }
+                }),
+                React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+                  React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#2c1810',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, track.name),
+                  React.createElement('div', { style: { fontSize: 11, color: '#9a7d5a', marginTop: 1 } },
+                    'Popularity: ' + track.popularity + ' / 100')
+                ),
+                React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: '#1DB954', style: { flexShrink: 0, opacity: 0.8 } },
+                  React.createElement('path', { d: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z' })
+                )
+              );
+            })
+          : !spotifyLoading && React.createElement('div', null,
+              artist.songs.map(function(s, i) {
+                return React.createElement('div', { key: s, style: { display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 5 } },
+                  React.createElement('span', { style: { fontSize: 12, color: ac + '88', fontWeight: 700, minWidth: 14 } }, i + 1),
+                  React.createElement('span', { style: { fontSize: 14, color: '#5a3d28', fontStyle: 'italic',
+                    fontFamily: 'Playfair Display, serif' } }, s)
+                );
+              })
+            )
       ),
       React.createElement('div', null,
         React.createElement('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
@@ -434,7 +505,7 @@ function ArtistRow(props) {
 }
 
 export default function SwanSong() {
-  var [genreFilter, setGenreFilter] = useState(null);
+  var [genreFilters, setGenreFilters] = useState([]);
   var [zipInput, setZipInput] = useState('');
   var [radius, setRadius] = useState(50);
   var [geoInfo, setGeoInfo] = useState(null);
@@ -445,7 +516,7 @@ export default function SwanSong() {
 
   var locationOpts = geoInfo ? { lat: geoInfo.lat, lng: geoInfo.lng, radius: radius } : null;
   var locationLabel = geoInfo ? geoInfo.city + ', ' + geoInfo.state : null;
-  var filterActive = !!(genreFilter || geoInfo || search);
+  var filterActive = !!(genreFilters.length > 0 || geoInfo || search);
 
   async function handleZipSubmit() {
     if (!zipInput || zipInput.length < 5) return;
@@ -459,7 +530,7 @@ export default function SwanSong() {
 
     // Pre-fetch all artists in background so location filter can hide no-show artists
     var opts = { lat: info.lat, lng: info.lng, radius: radius };
-    var scope = genreFilter ? ARTISTS.filter(function(a) { return a.genre === genreFilter; }) : ARTISTS;
+    var scope = genreFilters.length > 0 ? ARTISTS.filter(function(a) { return genreFilters.indexOf(a.genre) !== -1; }) : ARTISTS;
     var fetches = scope.map(function(artist) {
       return fetchShows(artist.tmName, artist.name, artist.tmId || null, opts);
     });
@@ -477,13 +548,17 @@ export default function SwanSong() {
     fetchCache = {};
   }
 
-  function setGenreFn(g) {
-    setGenreFilter(function(prev) { return prev === g ? null : g; });
+  function toggleGenre(g) {
+    setGenreFilters(function(prev) {
+      var idx = prev.indexOf(g);
+      if (idx === -1) return prev.concat([g]);
+      return prev.filter(function(x) { return x !== g; });
+    });
     setExpanded({});
   }
 
   function clearAll() {
-    setGenreFilter(null); setSearch('');
+    setGenreFilters([]); setSearch('');
     clearLocation();
   }
 
@@ -500,14 +575,15 @@ export default function SwanSong() {
            Math.max.apply(null, a.members.map(function(m) { return m.age; }));
   });
 
-  // When location is active, hide artists whose shows have loaded with 0 results
+  // When location active, hide artists confirmed to have zero shows in range
   var visibleArtists = allSorted.filter(function(a) {
-    if (genreFilter && a.genre !== genreFilter) return false;
+    if (genreFilters.length > 0 && genreFilters.indexOf(a.genre) === -1) return false;
     if (search && a.name.toLowerCase().indexOf(search.toLowerCase()) === -1) return false;
     if (geoInfo) {
-      var cached = fetchCache[a.tmName + '__' + JSON.stringify(locationOpts || {})];
-      // If loaded and empty, hide. If not yet loaded or still loading, keep visible.
-      if (cached !== undefined && cached.length === 0) return false;
+      var cacheKey = a.tmName + '__' + (a.tmId || '') + '__' + JSON.stringify(locationOpts || {});
+      var cached = fetchCache[cacheKey];
+      // Hide only once confirmed empty — keep visible while loading or not yet fetched
+      if (cached !== undefined && Array.isArray(cached) && cached.length === 0) return false;
     }
     return true;
   });
@@ -528,12 +604,12 @@ export default function SwanSong() {
 
     // HERO
     React.createElement('div', {
-      style: { textAlign: 'center', padding: '52px 24px 36px',
+      style: { textAlign: 'center', padding: '24px 24px 20px',
         background: 'linear-gradient(180deg, rgba(139,105,20,0.1) 0%, transparent 100%)',
         borderBottom: '2px solid rgba(139,105,20,0.18)' }
     },
       React.createElement('div', { style: { display: 'inline-block', marginBottom: 12 } },
-        React.createElement('svg', { width: 56, height: 56, viewBox: '0 0 44 44', fill: 'none' },
+        React.createElement('svg', { width: 40, height: 40, viewBox: '0 0 44 44', fill: 'none' },
           React.createElement('ellipse', { cx: '27', cy: '29', rx: '13', ry: '8', fill: '#8B6914', opacity: '0.18' }),
           React.createElement('path', { d: 'M10 35 C10 35 15 24 24 21 C33 18 38 11 36 6 C34 1 27 4 22 9 C17 14 14 22 10 35Z', fill: '#8B6914', opacity: '0.85' }),
           React.createElement('circle', { cx: '35.5', cy: '7', r: '2.5', fill: '#8B6914' }),
@@ -542,12 +618,12 @@ export default function SwanSong() {
       ),
       React.createElement('h1', { style: { fontSize: 'clamp(52px, 10vw, 96px)', fontWeight: 900,
         fontFamily: 'Playfair Display, serif', letterSpacing: '-0.02em', lineHeight: 1,
-        color: '#2c1810', marginBottom: 16, textShadow: '2px 3px 0px rgba(139,105,20,0.2)' } }, 'Swan Song'),
+        color: '#2c1810', marginBottom: 10, textShadow: '2px 3px 0px rgba(139,105,20,0.2)' } }, 'Swan Song'),
 
       // Tagline — original words, Cormorant Garamond, larger, spaced
       React.createElement('p', { style: {
-        fontFamily: 'Cormorant Garamond, Georgia, serif',
-        fontSize: 'clamp(20px, 3vw, 30px)',
+        fontFamily: 'Cormorant Garamond, Georgia, serif', marginBottom: 16,
+        fontSize: 'clamp(16px, 2.2vw, 22px)',
         fontWeight: 300,
         fontStyle: 'italic',
         color: '#6b4c2a',
@@ -578,8 +654,8 @@ export default function SwanSong() {
             letterSpacing: '0.1em', textTransform: 'uppercase', marginRight: 4 } }, 'Genre'),
           GENRES.map(function(g) {
             var gc = GENRE_COLORS[g];
-            var active = genreFilter === g;
-            return React.createElement('button', { key: g, onClick: function() { setGenreFn(g); },
+            var active = genreFilters.indexOf(g) !== -1;
+            return React.createElement('button', { key: g, onClick: function() { toggleGenre(g); },
               style: { padding: '6px 18px', borderRadius: 30, fontSize: 13, fontWeight: 700,
                 letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
                 border: '1.5px solid ' + (active ? gc : 'rgba(139,105,20,0.22)'),
@@ -651,7 +727,7 @@ export default function SwanSong() {
           ? (geoLoading
               ? 'Searching for shows near ' + locationLabel + '...'
               : visibleArtists.length + ' artist' + (visibleArtists.length !== 1 ? 's' : '') +
-                (genreFilter ? ' in ' + genreFilter : '') +
+                (genreFilters.length > 0 ? ' in ' + genreFilters.join(' & ') : '') +
                 (locationLabel ? ' with shows near ' + locationLabel + ' within ' + radius + ' mi' : '') +
                 ' — click any to expand')
           : 'Click any artist to see their songs and upcoming shows worldwide. Enter a ZIP to find shows near you.'
