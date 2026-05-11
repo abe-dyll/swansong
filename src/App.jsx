@@ -610,7 +610,7 @@ export default function SwanSong() {
 
       // Tagline — original words, Cormorant Garamond, larger, spaced
       React.createElement('p', { style: {
-        fontFamily: 'Cormorant Garamond, Georgia, serif', marginBottom: 16,
+        fontFamily: 'Cormorant Garamond, Georgia, serif',
         fontSize: 'clamp(16px, 2.2vw, 22px)',
         fontWeight: 300,
         fontStyle: 'italic',
