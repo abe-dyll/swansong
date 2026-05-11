@@ -8,14 +8,13 @@ function normalize(str) {
     .trim();
 }
 
-function attractionMatches(attractions, artistName) {
-  if (!attractions || attractions.length === 0) return false;
+// Returns true if the event's attractions contain an exact match for our artist
+function eventHasArtist(eventAttractions, artistName) {
+  if (!eventAttractions || eventAttractions.length === 0) return false;
   var normArtist = normalize(artistName);
-  for (var i = 0; i < attractions.length; i++) {
-    var normAttraction = normalize(attractions[i].name || '');
+  for (var i = 0; i < eventAttractions.length; i++) {
+    var normAttraction = normalize(eventAttractions[i].name || '');
     if (normAttraction === normArtist) return true;
-    if (normAttraction.indexOf(normArtist) !== -1) return true;
-    if (normArtist.indexOf(normAttraction) !== -1 && normAttraction.length > 4) return true;
   }
   return false;
 }
@@ -24,7 +23,7 @@ exports.handler = async function(event) {
   var params = event.queryStringParameters || {};
   var artist = params.artist;
   var artistDisplay = params.artistDisplay || artist;
-  var tmId = params.tmId; // hardcoded attraction ID if provided
+  var tmId = params.tmId;
   var lat = params.lat;
   var lng = params.lng;
   var radius = params.radius || "50";
@@ -33,75 +32,58 @@ exports.handler = async function(event) {
     return { statusCode: 400, body: JSON.stringify({ error: "Missing artist param" }) };
   }
 
-  var locationParam = "";
-  if (lat && lng) {
-    locationParam = "&latlong=" + lat + "," + lng + "&radius=" + radius + "&unit=miles";
-  } else {
-    locationParam = "&countryCode=US";
-  }
+  var locationParam = lat && lng
+    ? "&latlong=" + lat + "," + lng + "&radius=" + radius + "&unit=miles"
+    : "&countryCode=US";
 
   var attractionId = tmId || null;
 
-  // If no hardcoded ID, look up the attraction ID
+  // Step 1: Look up attraction ID if not hardcoded
   if (!attractionId) {
-    var attractionUrl = "https://app.ticketmaster.com/discovery/v2/attractions.json"
-      + "?keyword=" + encodeURIComponent(artist)
-      + "&classificationName=music"
-      + "&size=5"
-      + "&apikey=" + TM_KEY;
-
     try {
-      var aRes = await fetch(attractionUrl);
+      var aUrl = "https://app.ticketmaster.com/discovery/v2/attractions.json"
+        + "?keyword=" + encodeURIComponent(artist)
+        + "&classificationName=music&size=10&apikey=" + TM_KEY;
+      var aRes = await fetch(aUrl);
       var aData = await aRes.json();
-      var attractions = (aData && aData._embedded && aData._embedded.attractions) ? aData._embedded.attractions : [];
+      var attractions = (aData && aData._embedded && aData._embedded.attractions) || [];
       var normArtist = normalize(artistDisplay);
 
-      // Only accept exact name match for attraction ID — no partial matches
+      // Strict: only accept if normalized attraction name is an exact match
       for (var i = 0; i < attractions.length; i++) {
-        var normName = normalize(attractions[i].name || '');
-        if (normName === normArtist) {
+        if (normalize(attractions[i].name || '') === normArtist) {
           attractionId = attractions[i].id;
           break;
         }
       }
-    } catch (e) {
-      // Fall through to keyword search
-    }
+    } catch (e) {}
   }
 
-  // Search events by attraction ID (clean) or keyword (fallback)
-  var eventsUrl;
-  if (attractionId) {
-    eventsUrl = "https://app.ticketmaster.com/discovery/v2/events.json"
-      + "?attractionId=" + attractionId
-      + "&classificationName=music"
-      + "&sort=date,asc"
-      + "&size=10"
-      + locationParam
-      + "&apikey=" + TM_KEY;
-  } else {
-    eventsUrl = "https://app.ticketmaster.com/discovery/v2/events.json"
-      + "?keyword=" + encodeURIComponent(artist)
-      + "&classificationName=music"
-      + "&sort=date,asc"
-      + "&size=15"
-      + locationParam
-      + "&apikey=" + TM_KEY;
-  }
+  // Step 2: Fetch events
+  var eventsUrl = attractionId
+    ? "https://app.ticketmaster.com/discovery/v2/events.json"
+        + "?attractionId=" + attractionId
+        + "&classificationName=music&sort=date,asc&size=10"
+        + locationParam + "&apikey=" + TM_KEY
+    : "https://app.ticketmaster.com/discovery/v2/events.json"
+        + "?keyword=" + encodeURIComponent(artist)
+        + "&classificationName=music&sort=date,asc&size=20"
+        + locationParam + "&apikey=" + TM_KEY;
 
   try {
     var res = await fetch(eventsUrl);
     var data = await res.json();
-    var events = (data && data._embedded && data._embedded.events) ? data._embedded.events : [];
+    var events = (data && data._embedded && data._embedded.events) || [];
 
     var shows = [];
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
-      var eventAttractions = e._embedded && e._embedded.attractions;
 
-      // For keyword fallback only: verify attraction matches
+      // When using attraction ID search, results are already clean
+      // When falling back to keyword, enforce strict attraction name match
       if (!attractionId) {
-        if (!attractionMatches(eventAttractions, artistDisplay)) continue;
+        var eventAttractions = e._embedded && e._embedded.attractions;
+        if (!eventHasArtist(eventAttractions, artistDisplay)) continue;
       }
 
       var venue = e._embedded && e._embedded.venues && e._embedded.venues[0];
