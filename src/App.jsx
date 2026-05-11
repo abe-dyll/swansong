@@ -254,7 +254,7 @@ function buildUrl(tmName, displayName, tmId, opts) {
 }
 
 async function fetchShows(tmName, displayName, tmId, opts) {
-  var key = tmName + '__' + (tmId || '') + '__' + JSON.stringify(opts || {});
+  var key = tmName + '__' + (tmId || '') + '__' + (opts ? (opts.lat + ',' + opts.lng + ',' + opts.radius) : 'world');
   if (fetchCache[key] !== undefined) return fetchCache[key];
   try {
     var res = await fetch(buildUrl(tmName, displayName, tmId, opts));
@@ -286,19 +286,127 @@ async function geocodeZip(zip) {
   } catch (e) { return null; }
 }
 
-function PriceDisplay(props) {
-  var level = props.level;
-  // Show ? when price unknown, $-$$$$ when known
-  if (!level) {
-    return React.createElement('div', {
-      style: { fontSize: 11, color: '#c4a882', fontWeight: 600, letterSpacing: '0.04em' }
-    }, 'price ?');
+
+
+// Global audio manager - only one preview plays at a time
+var currentAudio = null;
+
+function TrackRow(props) {
+  var track = props.track;
+  var ac = props.ac;
+  var [playing, setPlaying] = React.useState(false);
+  var [progress, setProgress] = React.useState(0);
+  var audioRef = React.useRef(null);
+
+  function togglePlay(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!track.previewUrl) return;
+
+    // Stop any other playing audio
+    if (currentAudio && currentAudio !== audioRef.current) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio(track.previewUrl);
+      audioRef.current.addEventListener('timeupdate', function() {
+        setProgress((audioRef.current.currentTime / 30) * 100);
+      });
+      audioRef.current.addEventListener('ended', function() {
+        setPlaying(false);
+        setProgress(0);
+        currentAudio = null;
+      });
+    }
+
+    if (playing) {
+      audioRef.current.pause();
+      currentAudio = null;
+      setPlaying(false);
+    } else {
+      audioRef.current.play();
+      currentAudio = audioRef.current;
+      setPlaying(true);
+    }
   }
-  return React.createElement('div', { style: { fontSize: 14, letterSpacing: '0.01em', lineHeight: 1 } },
-    [1,2,3,4].map(function(i) {
-      return React.createElement('span', { key: i,
-        style: { color: i <= level ? '#8B6914' : '#e0d0b0', fontWeight: 900 } }, '$');
-    })
+
+  // Cleanup on unmount
+  React.useEffect(function() {
+    return function() {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        if (currentAudio === audioRef.current) currentAudio = null;
+      }
+    };
+  }, []);
+
+  return React.createElement('a', {
+    href: track.spotifyUrl, target: '_blank', rel: 'noopener noreferrer',
+    style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 7,
+      textDecoration: 'none', padding: '7px 10px', borderRadius: 8,
+      background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(139,105,20,0.1)',
+      transition: 'all 0.15s' },
+    onMouseEnter: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = '#1DB954'; },
+    onMouseLeave: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(139,105,20,0.1)'; }
+  },
+    // Album art
+    track.albumImage && React.createElement('img', {
+      src: track.albumImage, alt: track.albumName,
+      style: { width: 36, height: 36, borderRadius: 4, flexShrink: 0, objectFit: 'cover' }
+    }),
+
+    // Track name + album
+    React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+      React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#2c1810',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, track.name),
+      React.createElement('div', { style: { fontSize: 11, color: '#9a7d5a', marginTop: 1, fontStyle: 'italic',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, track.albumName || '')
+    ),
+
+    // Preview button
+    track.previewUrl && React.createElement('button', {
+      onClick: togglePlay,
+      style: { flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+        background: playing ? '#1DB954' : 'rgba(29,185,84,0.15)',
+        border: '1.5px solid #1DB954', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s', position: 'relative', overflow: 'hidden' }
+    },
+      // Progress ring when playing
+      playing && React.createElement('svg', {
+        style: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)' },
+        viewBox: '0 0 28 28'
+      },
+        React.createElement('circle', {
+          cx: '14', cy: '14', r: '12',
+          fill: 'none', stroke: '#fff', strokeWidth: '2',
+          strokeDasharray: '75.4',
+          strokeDashoffset: 75.4 - (75.4 * progress / 100),
+          style: { transition: 'stroke-dashoffset 0.1s' }
+        })
+      ),
+      // Play/pause icon
+      React.createElement('span', { style: { fontSize: playing ? 9 : 10, color: playing ? '#fff' : '#1DB954',
+        position: 'relative', zIndex: 1, lineHeight: 1, marginLeft: playing ? 0 : 1 } },
+        playing ? '❚❚' : '▶'
+      )
+    ),
+
+    // Popularity score
+    track.popularity != null && React.createElement('div', { style: { flexShrink: 0, textAlign: 'center', minWidth: 28 } },
+      React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#8B6914', lineHeight: 1 } }, track.popularity),
+      React.createElement('div', { style: { fontSize: 8, color: '#b08a50', letterSpacing: '0.06em',
+        textTransform: 'uppercase', marginTop: 2 } }, 'pop')
+    ),
+
+    // Spotify icon
+    React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: '#1DB954',
+      style: { flexShrink: 0, opacity: 0.8 } },
+      React.createElement('path', { d: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z' })
+    )
   );
 }
 
@@ -345,9 +453,7 @@ function ShowCard(props) {
         React.createElement('div', { style: { fontSize: 12, color: '#9a7d5a',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, show.venue)
       ),
-      React.createElement('div', { style: { flexShrink: 0, display: 'flex', flexDirection: 'column',
-        alignItems: 'flex-end', gap: 6, paddingTop: 2 } },
-        React.createElement(PriceDisplay, { level: show.priceLevel }),
+      React.createElement('div', { style: { flexShrink: 0, paddingTop: 2 } },
         React.createElement('div', { style: { fontSize: 10, color: '#fff', background: '#8B6914',
           borderRadius: 5, padding: '4px 8px', fontWeight: 700, letterSpacing: '0.07em', whiteSpace: 'nowrap' } },
           'GET TICKETS'
@@ -451,32 +557,7 @@ function ArtistRow(props) {
         spotifyLoading && React.createElement('div', { style: { fontSize: 12, color: '#b08a50', fontStyle: 'italic' } }, 'Loading...'),
         !spotifyLoading && spotifyInfo && spotifyInfo.tracks && spotifyInfo.tracks.length > 0
           ? spotifyInfo.tracks.map(function(track, i) {
-              return React.createElement('a', {
-                key: track.name,
-                href: track.spotifyUrl,
-                target: '_blank',
-                rel: 'noopener noreferrer',
-                style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 7,
-                  textDecoration: 'none', padding: '7px 10px', borderRadius: 8,
-                  background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(139,105,20,0.1)',
-                  transition: 'all 0.15s' },
-                onMouseEnter: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = '#1DB954'; },
-                onMouseLeave: function(e) { e.currentTarget.style.background = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(139,105,20,0.1)'; }
-              },
-                track.albumImage && React.createElement('img', {
-                  src: track.albumImage, alt: track.albumName,
-                  style: { width: 32, height: 32, borderRadius: 4, flexShrink: 0, objectFit: 'cover' }
-                }),
-                React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-                  React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#2c1810',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, track.name),
-                  React.createElement('div', { style: { fontSize: 11, color: '#9a7d5a', marginTop: 1 } },
-                    'Popularity: ' + track.popularity + ' / 100')
-                ),
-                React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: '#1DB954', style: { flexShrink: 0, opacity: 0.8 } },
-                  React.createElement('path', { d: 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z' })
-                )
-              );
+              return React.createElement(TrackRow, { key: track.name, track: track, ac: ac });
             })
           : !spotifyLoading && React.createElement('div', null,
               artist.songs.map(function(s, i) {
@@ -524,20 +605,31 @@ export default function SwanSong() {
     setGeoError('');
     var info = await geocodeZip(zipInput);
     if (!info) { setGeoLoading(false); setGeoError('ZIP code not found. Try another.'); return; }
+
+    // Clear ALL caches before new search so stale results never bleed through
     fetchCache = {};
+    spotifyCache = {};
+
+    var currentRadius = radius;
+    var opts = { lat: info.lat, lng: info.lng, radius: currentRadius };
+
     setGeoInfo(info);
     setExpanded({});
 
-    // Pre-fetch all artists in background so location filter can hide no-show artists
-    var opts = { lat: info.lat, lng: info.lng, radius: radius };
-    var scope = genreFilters.length > 0 ? ARTISTS.filter(function(a) { return genreFilters.indexOf(a.genre) !== -1; }) : ARTISTS;
+    // Pre-fetch all artists sequentially in small batches to avoid rate limiting
+    var scope = genreFilters.length > 0
+      ? ARTISTS.filter(function(a) { return genreFilters.indexOf(a.genre) !== -1; })
+      : ARTISTS;
+
+    // Fire all fetches — re-render after each one completes so artists disappear progressively
     var fetches = scope.map(function(artist) {
-      return fetchShows(artist.tmName, artist.name, artist.tmId || null, opts);
+      return fetchShows(artist.tmName, artist.name, artist.tmId || null, opts).then(function(shows) {
+        // Trigger re-render after each result comes in
+        setGeoInfo(function(prev) { return prev ? Object.assign({}, prev, { _tick: Math.random() }) : prev; });
+        return shows;
+      });
     });
-    // Re-render as results come in so artists fade out progressively
-    fetches.forEach(function(p) {
-      p.then(function() { setGeoInfo(function(prev) { return prev ? Object.assign({}, prev) : prev; }); });
-    });
+
     await Promise.all(fetches);
     setGeoLoading(false);
   }
@@ -580,7 +672,7 @@ export default function SwanSong() {
     if (genreFilters.length > 0 && genreFilters.indexOf(a.genre) === -1) return false;
     if (search && a.name.toLowerCase().indexOf(search.toLowerCase()) === -1) return false;
     if (geoInfo) {
-      var cacheKey = a.tmName + '__' + (a.tmId || '') + '__' + JSON.stringify(locationOpts || {});
+      var cacheKey = a.tmName + '__' + (a.tmId || '') + '__' + (locationOpts ? (locationOpts.lat + ',' + locationOpts.lng + ',' + locationOpts.radius) : 'world');
       var cached = fetchCache[cacheKey];
       // Hide only once confirmed empty — keep visible while loading or not yet fetched
       if (cached !== undefined && Array.isArray(cached) && cached.length === 0) return false;
