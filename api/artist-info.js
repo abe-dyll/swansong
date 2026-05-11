@@ -1,114 +1,67 @@
-const SPOTIFY_CLIENT_ID = "f9957bf2d4af4edfa7e8d05c98983bee";
-const SPOTIFY_CLIENT_SECRET = "944ebe751b904913a7e828586b2fd36e";
+const LASTFM_KEY = "41b73b241f0a7c07e99a475a4343f32a";
 
-async function getSpotifyToken() {
-  var credentials = Buffer.from(SPOTIFY_CLIENT_ID + ":" + SPOTIFY_CLIENT_SECRET).toString("base64");
-  var res = await fetch("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: {
-      "Authorization": "Basic " + credentials,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: "grant_type=client_credentials"
-  });
-  var data = await res.json();
-  return data.access_token;
-}
-
-async function searchArtist(token, artistName) {
-  var url = "https://api.spotify.com/v1/search"
-    + "?q=" + encodeURIComponent(artistName)
-    + "&type=artist&limit=10";
-  var res = await fetch(url, {
-    headers: { "Authorization": "Bearer " + token }
-  });
-  var data = await res.json();
-  var artists = (data && data.artists && data.artists.items) || [];
-  if (artists.length === 0) return null;
-
-  var normTarget = artistName.toLowerCase().replace(/^the /, '').trim();
-
-  // Among exact name matches, pick the one with the most followers
-  // This ensures we get the real Bob Dylan not a tribute act
-  var exactMatches = artists.filter(function(a) {
-    return a.name.toLowerCase().replace(/^the /, '').trim() === normTarget;
-  });
-
-  if (exactMatches.length > 0) {
-    exactMatches.sort(function(a, b) {
-      return (b.followers && b.followers.total || 0) - (a.followers && a.followers.total || 0);
-    });
-    return exactMatches[0];
-  }
-
-  // No exact match — return highest follower count result
-  artists.sort(function(a, b) {
-    return (b.followers && b.followers.total || 0) - (a.followers && a.followers.total || 0);
-  });
-  return artists[0];
-}
-
-async function getTopTracks(token, artistId) {
-  // Try with market=US first (required for client credentials flow)
-  var markets = ["US", "GB", "AU"];
-  for (var i = 0; i < markets.length; i++) {
-    var url = "https://api.spotify.com/v1/artists/" + artistId + "/top-tracks?market=" + markets[i];
-    var res = await fetch(url, {
-      headers: { "Authorization": "Bearer " + token }
-    });
-    if (!res.ok) continue;
-    var data = await res.json();
-    var tracks = (data && data.tracks) || [];
-    if (tracks.length > 0) return tracks;
-  }
-  return [];
-}
-
-exports.handler = async function(event) {
-  var params = event.queryStringParameters || {};
-  var artistName = params.artist;
+export default async function handler(req, res) {
+  var artistName = req.query.artist;
 
   if (!artistName) {
-    return { statusCode: 400, body: JSON.stringify({ error: "Missing artist param" }) };
+    return res.status(400).json({ error: "Missing artist param" });
   }
 
   try {
-    var token = await getSpotifyToken();
-    var artist = await searchArtist(token, artistName);
+    var url = "https://ws.audioscrobbler.com/2.0/"
+      + "?method=artist.gettoptracks"
+      + "&artist=" + encodeURIComponent(artistName)
+      + "&api_key=" + LASTFM_KEY
+      + "&format=json"
+      + "&limit=3";
 
-    if (!artist) {
-      return {
-        statusCode: 200,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ tracks: [], genres: [] })
-      };
-    }
+    var response = await fetch(url);
+    var data = await response.json();
+    var rawTracks = (data && data.toptracks && data.toptracks.track) || [];
 
-    var topTracks = await getTopTracks(token, artist.id);
+    var tracks = rawTracks.slice(0, 3).map(function(t) {
+      var playcount = parseInt(t.playcount || 0);
+      var playcountDisplay = playcount >= 1000000
+        ? (playcount / 1000000).toFixed(1) + "M"
+        : playcount >= 1000
+          ? (playcount / 1000).toFixed(0) + "K"
+          : String(playcount);
 
-    var tracks = topTracks.slice(0, 3).map(function(t) {
       return {
         name: t.name,
-        popularity: t.popularity,
-        previewUrl: t.preview_url || null,
-        spotifyUrl: t.external_urls && t.external_urls.spotify,
-        albumName: t.album && t.album.name,
-        albumImage: t.album && t.album.images && t.album.images[2] && t.album.images[2].url
+        playcount: playcount,
+        playcountDisplay: playcountDisplay,
+        url: t.url
       };
     });
 
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({
-        tracks: tracks,
-        genres: artist.genres || [],
-        followers: artist.followers && artist.followers.total,
-        spotifyUrl: artist.external_urls && artist.external_urls.spotify,
-        image: artist.images && artist.images[1] && artist.images[1].url
-      })
-    };
+    // Also get artist info for image and bio
+    var infoUrl = "https://ws.audioscrobbler.com/2.0/"
+      + "?method=artist.getinfo"
+      + "&artist=" + encodeURIComponent(artistName)
+      + "&api_key=" + LASTFM_KEY
+      + "&format=json";
+
+    var infoRes = await fetch(infoUrl);
+    var infoData = await infoRes.json();
+    var artistInfo = infoData && infoData.artist;
+
+    var listeners = artistInfo && artistInfo.stats && artistInfo.stats.listeners;
+    var listenersDisplay = null;
+    if (listeners) {
+      var l = parseInt(listeners);
+      listenersDisplay = l >= 1000000
+        ? (l / 1000000).toFixed(1) + "M listeners"
+        : (l / 1000).toFixed(0) + "K listeners";
+    }
+
+    return res.status(200).json({
+      tracks: tracks,
+      listeners: listenersDisplay,
+      lastfmUrl: artistInfo && artistInfo.url
+    });
+
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return res.status(500).json({ error: err.message });
   }
-};
+}
