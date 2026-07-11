@@ -4,7 +4,7 @@ const AGE_LEGEND = [
   { color: '#5C7A29', label: '65-71' },
 ];
 
-export default function Hero() {
+export default function Hero({ tagline = 'See them while you still can.' }) {
   return (
     <header className="hero">
       <div className="hero__sunburst" aria-hidden="true" />
@@ -34,7 +34,7 @@ export default function Hero() {
       </div>
 
       <h1 className="hero__title">Swan Song</h1>
-      <p className="hero__tagline">See them while you still can.</p>
+      <p className="hero__tagline">{tagline}</p>
 
       <div className="hero__legend">
         {AGE_LEGEND.map((item) => (

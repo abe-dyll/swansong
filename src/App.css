@@ -133,6 +133,29 @@ body {
   border-radius: 50%;
 }
 
+.mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 8px 16px;
+  min-height: 36px;
+  border-radius: 30px;
+  border: 1.5px solid rgba(139, 105, 20, 0.3);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.mode-toggle:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
 /* ---------- Filter bar ---------- */
 
 .filter-bar {
