@@ -21,11 +21,9 @@ export async function fetchArtInfo(wikidataId, artistName) {
   }
 }
 
-// Mirrors primeGenreMax's "fire silently in the background" pattern from
-// src/lib/api.js — not required for Art mode's UI to function (there's no
-// cross-artist normalization to prime, unlike Music's Song Score), but kept
-// as a hook so App.jsx can pre-warm the cache for currently-visible cards
-// without changing the calling convention between modes.
+// Not required for Art mode's UI to function — kept as a hook so App.jsx
+// can pre-warm the cache for currently-visible cards without changing the
+// calling convention between modes.
 export async function primeArtInfo(wikidataId, artistName) {
   await fetchArtInfo(wikidataId, artistName);
 }

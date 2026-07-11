@@ -9,10 +9,8 @@ export default function Footer({ mode }) {
       <div className="footer__note">
         {mode === 'music' ? (
           <>
-            <span className="footer__note-label">Song Score</span> is an estimated 0-100 ranking, normalized within
-            each genre using a power curve. It approximates relative popularity from each artist&rsquo;s top Last.fm
-            track &mdash; it is not a measured stream count, and a score of 100 marks the current benchmark song in
-            that genre.
+            <span className="footer__note-label">Upcoming shows</span> are sourced live from Ticketmaster and
+            reflect only events listed there &mdash; an artist may still be touring even if nothing shows up here.
           </>
         ) : (
           <>

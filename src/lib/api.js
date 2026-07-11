@@ -1,7 +1,3 @@
-import { createGenreMaxStore } from './scoring';
-
-export const genreMaxStore = createGenreMaxStore();
-
 let fetchCache = {};
 let spotifyCache = {};
 
@@ -44,41 +40,18 @@ export async function fetchShows(tmName, displayName, tmId, opts) {
   }
 }
 
-export async function fetchSpotifyInfo(artistName, genre) {
+export async function fetchSpotifyInfo(artistName) {
   if (spotifyCache[artistName] !== undefined) return spotifyCache[artistName];
   try {
     const res = await fetch('/api/artist-info?artist=' + encodeURIComponent(artistName));
     if (!res.ok) throw new Error('Request failed with status ' + res.status);
     const data = await res.json();
-    if (data && data.tracks && genre) {
-      data.tracks.forEach((t) => {
-        if (t.playcount) genreMaxStore.update(genre, t.playcount);
-      });
-    }
     spotifyCache[artistName] = data;
     return data;
   } catch (err) {
     console.error('Failed to fetch artist info for', artistName, err);
     spotifyCache[artistName] = null;
     return null;
-  }
-}
-
-// Fires silently in the background on page load so genre scores are stable
-// by the time a user expands the first artist.
-export async function primeGenreMax(artistName, genre) {
-  try {
-    const res = await fetch('/api/artist-info?artist=' + encodeURIComponent(artistName));
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data && data.tracks && data.tracks.length > 0) {
-      data.tracks.forEach((t) => {
-        if (t.playcount) genreMaxStore.update(genre, t.playcount);
-      });
-      spotifyCache[artistName] = data;
-    }
-  } catch (err) {
-    console.error('Failed to prime genre score for', artistName, err);
   }
 }
 

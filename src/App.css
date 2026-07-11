@@ -420,8 +420,6 @@ body {
 
 .artist-row__section-header--shows { margin-bottom: 10px; }
 
-.artist-row__section-hint { text-transform: none; font-weight: 500; letter-spacing: 0; opacity: 0.8; }
-
 .artist-row__spotify-link { display: flex; align-items: center; gap: 4px; text-decoration: none; }
 .artist-row__spotify-label { font-size: 10px; color: #1db954; font-weight: 700; letter-spacing: 0.06em; }
 
@@ -463,13 +461,6 @@ body {
   flex: 1; min-width: 0;
   font-size: 13px; font-weight: 600; color: var(--ink);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-.track-row__score { flex-shrink: 0; text-align: right; }
-.track-row__score-value { font-size: 13px; font-weight: 700; color: var(--accent-gold); }
-.track-row__score-label {
-  font-size: 8px; color: #b08a50; letter-spacing: 0.05em;
-  text-transform: uppercase; margin-top: 1px;
 }
 
 /* ---------- Show card ---------- */

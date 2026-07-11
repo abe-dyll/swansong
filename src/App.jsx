@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import './App.css';
 import musicAdapter from './adapters/musicAdapter';
 import artAdapter from './adapters/artAdapter';
 import { maxAge, RADIUS_OPTIONS } from './data/artists';
 import { computeAge } from './lib/age';
 import { getModeFromUrl, setModeInUrl } from './lib/urlMode';
-import { clearCaches, geocodeZip, getCachedShows, primeGenreMax, fetchShows } from './lib/api';
+import { clearCaches, geocodeZip, getCachedShows, fetchShows } from './lib/api';
 import Hero from './components/Hero';
 import ModeToggle from './components/ModeToggle';
 import FilterBar from './components/FilterBar';
@@ -36,16 +36,6 @@ export default function SwanSong() {
     setExpanded({});
     clearLocation();
   }
-
-  // Prime Music's genre score baselines silently on load, staggered to avoid
-  // hammering Last.fm, so scores are stable the first time a user expands
-  // an artist. Art mode has no equivalent priming step.
-  useEffect(() => {
-    if (mode !== 'music') return;
-    musicAdapter.roster.forEach((artist, i) => {
-      setTimeout(() => primeGenreMax(artist.name, artist.genre), i * 80);
-    });
-  }, [mode]);
 
   const locationOpts = geoInfo ? { lat: geoInfo.lat, lng: geoInfo.lng, radius } : null;
   const locationLabel = geoInfo ? `${geoInfo.city}, ${geoInfo.state}` : null;

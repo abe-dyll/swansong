@@ -1,8 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { ageColor, artistHasPassed, maxAge } from '../data/artists';
 import { computeAge } from '../lib/age';
-import { fetchShows, fetchSpotifyInfo, genreMaxStore } from '../lib/api';
-import { estimateTrackScore } from '../lib/scoring';
+import { fetchShows, fetchSpotifyInfo } from '../lib/api';
 import TrackRow from './TrackRow';
 import ShowCard from './ShowCard';
 
@@ -30,7 +29,7 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
     if (!expanded) return;
     if (spotifyInfo !== null || spotifyLoading) return;
     setSpotifyLoading(true);
-    fetchSpotifyInfo(artist.name, artist.genre).then((info) => {
+    fetchSpotifyInfo(artist.name).then((info) => {
       setSpotifyInfo(info);
       setSpotifyLoading(false);
     });
@@ -84,7 +83,7 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
         <div id={panelId} className="artist-row__panel">
           <div className="artist-row__songs">
             <div className="artist-row__section-header">
-              <span>Top Songs <span className="artist-row__section-hint">(estimated)</span></span>
+              <span>Top Songs</span>
               {spotifyInfo && spotifyInfo.spotifyUrl && (
                 <a href={spotifyInfo.spotifyUrl} target="_blank" rel="noopener noreferrer" className="artist-row__spotify-link">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true">
@@ -94,13 +93,8 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
                 </a>
               )}
             </div>
-            {artist.songs.map((s, i) => (
-              <TrackRow
-                key={s}
-                name={s}
-                genre={artist.genre}
-                score={estimateTrackScore(genreMaxStore.get(artist.genre), i)}
-              />
+            {artist.songs.map((s) => (
+              <TrackRow key={s} name={s} />
             ))}
           </div>
 
