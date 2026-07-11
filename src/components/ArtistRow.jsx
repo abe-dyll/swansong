@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
-import { ageColor, maxAge } from '../data/artists';
+import { ageColor, artistHasPassed, maxAge } from '../data/artists';
+import { computeAge } from '../lib/age';
 import { fetchShows, fetchSpotifyInfo, genreMaxStore } from '../lib/api';
 import { estimateTrackScore } from '../lib/scoring';
 import TrackRow from './TrackRow';
@@ -58,7 +59,7 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
             <div className="artist-row__members">
               {artist.members.map((m) => (
                 <span key={m.name} className="artist-row__member">
-                  {m.name} <span style={{ color: ageColor(m.age) }}>{m.age}</span>
+                  {m.name} <span style={{ color: ageColor(computeAge(m.birthYear, m.deathYear)) }}>{computeAge(m.birthYear, m.deathYear)}</span>
                 </span>
               ))}
             </div>
@@ -67,7 +68,11 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
         {hasShows && <div className="artist-row__badge">{shows.length} show{shows.length !== 1 ? 's' : ''}</div>}
         {isSolo && (
           <div className="artist-row__age-circle" style={{ borderColor: ac, background: ac + '18', color: ac }}>
-            {age}
+            {artistHasPassed(artist) ? (
+              <span className="artist-row__memoriam">RIP</span>
+            ) : (
+              age
+            )}
           </div>
         )}
         <span className={`artist-row__chevron${expanded ? ' artist-row__chevron--open' : ''}`} aria-hidden="true">

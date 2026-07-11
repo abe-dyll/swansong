@@ -354,6 +354,12 @@ body {
   font-family: 'Righteous', Georgia, serif;
 }
 
+.artist-row__memoriam {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
 .artist-row__chevron {
   font-size: 18px;
   color: #b08a50;
