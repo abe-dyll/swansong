@@ -16,7 +16,7 @@ function eventHasArtist(eventAttractions, artistName) {
   return false;
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   var params = req.query || {};
   var artist = params.artist;
   var artistDisplay = params.artistDisplay || artist;
@@ -119,4 +119,4 @@ module.exports = async function handler(req, res) {
     console.error("shows: event lookup failed for", artist, err);
     return res.status(502).json({ error: "Failed to fetch shows" });
   }
-};
+}

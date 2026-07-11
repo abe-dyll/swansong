@@ -35,7 +35,7 @@ async function getSpotifyArtistUrl(artistName, clientId, clientSecret) {
   }
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   var artistName = req.query.artist;
   if (!artistName || typeof artistName !== "string" || artistName.length > 200) {
     return res.status(400).json({ error: "Missing or invalid artist param" });
@@ -78,4 +78,4 @@ module.exports = async function handler(req, res) {
     console.error("artist-info failed for", artistName, err);
     return res.status(502).json({ error: "Failed to fetch artist info" });
   }
-};
+}

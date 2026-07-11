@@ -40,6 +40,11 @@ async function fetchWikipediaSummary(wikidataId) {
 const PROP_NOTABLE_WORK = 'P800';
 const PROP_COLLECTION = 'P195';
 const PROP_LOCATION = 'P276';
+const PROP_IMAGE = 'P18';
+
+function commonsFilePathUrl(filename) {
+  return 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(filename) + '?width=500';
+}
 
 async function fetchLabel(qid) {
   try {
@@ -68,6 +73,7 @@ async function resolveNotableWorks(entity, artistName) {
     if (!title) continue;
 
     let institution = null;
+    let imageUrl = null;
     try {
       const workRes = await fetch('https://www.wikidata.org/wiki/Special:EntityData/' + workId + '.json');
       if (workRes.ok) {
@@ -79,15 +85,20 @@ async function resolveNotableWorks(entity, artistName) {
           && collectionClaim[0].mainsnak.datavalue && collectionClaim[0].mainsnak.datavalue.value
           && collectionClaim[0].mainsnak.datavalue.value.id;
         if (collectionId) institution = await fetchLabel(collectionId);
+
+        const imageClaim = workEntity && workEntity.claims && workEntity.claims[PROP_IMAGE];
+        const filename = imageClaim && imageClaim[0] && imageClaim[0].mainsnak
+          && imageClaim[0].mainsnak.datavalue && imageClaim[0].mainsnak.datavalue.value;
+        if (filename) imageUrl = commonsFilePathUrl(filename);
       }
     } catch (e) {
-      console.error('art-info: failed to resolve institution for work', workId, e);
+      console.error('art-info: failed to resolve institution/image for work', workId, e);
     }
 
     works.push({
       title,
       institution,
-      imageUrl: null, // Commons image resolution is deliberately out of scope here — see WorkImage's fallback rule
+      imageUrl, // real Commons thumbnail when P18 exists; WorkImage falls back to a search link otherwise
       googleImagesUrl: googleImagesUrl(artistName + ' ' + title),
     });
   }
@@ -107,7 +118,7 @@ async function resolveCollections(entity) {
   return collections;
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const wikidataId = req.query.wikidataId;
   const artistName = req.query.artistName || wikidataId;
 
@@ -132,4 +143,4 @@ module.exports = async function handler(req, res) {
     console.error('art-info failed for', wikidataId, err);
     return res.status(502).json({ error: 'Failed to fetch artist info' });
   }
-};
+}
