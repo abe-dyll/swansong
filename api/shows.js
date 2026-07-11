@@ -1,5 +1,3 @@
-const TM_KEY = "NVPeiOI6iUQOfiXXxGjRdYPUIBedQmBy";
-
 function normalize(str) {
   return str.toLowerCase()
     .replace(/[^a-z0-9 ]/g, '')
@@ -27,12 +25,22 @@ module.exports = async function handler(req, res) {
   var lng = params.lng;
   var radius = params.radius || "50";
 
-  if (!artist) {
-    return res.status(400).json({ error: "Missing artist param" });
+  if (!artist || typeof artist !== "string" || artist.length > 200) {
+    return res.status(400).json({ error: "Missing or invalid artist param" });
   }
 
-  var locationParam = lat && lng
-    ? "&latlong=" + lat + "," + lng + "&radius=" + radius + "&unit=miles"
+  var tmKey = process.env.TICKETMASTER_API_KEY;
+  if (!tmKey) {
+    console.error("shows: missing TICKETMASTER_API_KEY environment variable");
+    return res.status(500).json({ error: "Server is not configured correctly" });
+  }
+
+  var parsedLat = lat ? parseFloat(lat) : null;
+  var parsedLng = lng ? parseFloat(lng) : null;
+  var parsedRadius = Math.min(parseInt(radius, 10) || 50, 500);
+
+  var locationParam = parsedLat != null && parsedLng != null && !Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)
+    ? "&latlong=" + parsedLat + "," + parsedLng + "&radius=" + parsedRadius + "&unit=miles"
     : "&countryCode=US";
 
   var attractionId = tmId || null;
@@ -41,7 +49,7 @@ module.exports = async function handler(req, res) {
     try {
       var aUrl = "https://app.ticketmaster.com/discovery/v2/attractions.json"
         + "?keyword=" + encodeURIComponent(artist)
-        + "&classificationName=music&size=10&apikey=" + TM_KEY;
+        + "&classificationName=music&size=10&apikey=" + tmKey;
       var aRes = await fetch(aUrl);
       var aData = await aRes.json();
       var attractions = (aData && aData._embedded && aData._embedded.attractions) || [];
@@ -61,18 +69,20 @@ module.exports = async function handler(req, res) {
         });
         attractionId = exactMatches[0].id;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("shows: attraction lookup failed for", artist, e);
+    }
   }
 
   var eventsUrl = attractionId
     ? "https://app.ticketmaster.com/discovery/v2/events.json"
         + "?attractionId=" + attractionId
         + "&classificationName=music&sort=date,asc&size=10"
-        + locationParam + "&apikey=" + TM_KEY
+        + locationParam + "&apikey=" + tmKey
     : "https://app.ticketmaster.com/discovery/v2/events.json"
         + "?keyword=" + encodeURIComponent(artist)
         + "&classificationName=music&sort=date,asc&size=20"
-        + locationParam + "&apikey=" + TM_KEY;
+        + locationParam + "&apikey=" + tmKey;
 
   try {
     var evRes = await fetch(eventsUrl);
@@ -106,6 +116,7 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json(shows);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error("shows: event lookup failed for", artist, err);
+    return res.status(502).json({ error: "Failed to fetch shows" });
   }
-}
+};
