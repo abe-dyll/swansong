@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
-import { ARTISTS, RADIUS_OPTIONS, maxAge } from './data/artists';
+import { ARTISTS, GENRES, GENRE_COLORS, RADIUS_OPTIONS, maxAge } from './data/artists';
 import { clearCaches, geocodeZip, getCachedShows, primeGenreMax, fetchShows } from './lib/api';
 import Hero from './components/Hero';
 import FilterBar from './components/FilterBar';
@@ -8,7 +8,7 @@ import ArtistRow from './components/ArtistRow';
 import Footer from './components/Footer';
 
 export default function SwanSong() {
-  const [genreFilters, setGenreFilters] = useState([]);
+  const [activeCategories, setActiveCategories] = useState([]);
   const [zipInput, setZipInput] = useState('');
   const [radius, setRadius] = useState(50);
   const [geoInfo, setGeoInfo] = useState(null);
@@ -28,7 +28,7 @@ export default function SwanSong() {
 
   const locationOpts = geoInfo ? { lat: geoInfo.lat, lng: geoInfo.lng, radius } : null;
   const locationLabel = geoInfo ? `${geoInfo.city}, ${geoInfo.state}` : null;
-  const filterActive = genreFilters.length > 0 || !!geoInfo || !!search;
+  const filterActive = activeCategories.length > 0 || !!geoInfo || !!search;
 
   async function handleZipSubmit() {
     if (!zipInput || zipInput.length < 5) return;
@@ -47,8 +47,8 @@ export default function SwanSong() {
     setGeoInfo(info);
     setExpanded({});
 
-    const scope = genreFilters.length > 0
-      ? ARTISTS.filter((a) => genreFilters.includes(a.genre))
+    const scope = activeCategories.length > 0
+      ? ARTISTS.filter((a) => activeCategories.includes(a.genre))
       : ARTISTS;
 
     // Fire all fetches and re-render after each resolves so artists with no
@@ -69,13 +69,13 @@ export default function SwanSong() {
     clearCaches();
   }
 
-  function toggleGenre(g) {
-    setGenreFilters((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  function toggleCategory(g) {
+    setActiveCategories((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
     setExpanded({});
   }
 
   function clearAll() {
-    setGenreFilters([]);
+    setActiveCategories([]);
     setSearch('');
     clearLocation();
   }
@@ -98,7 +98,7 @@ export default function SwanSong() {
   // When a location filter is active, hide artists confirmed to have zero
   // shows in range — but keep them visible while loading or not yet fetched.
   const visibleArtists = allSorted.filter((a) => {
-    if (genreFilters.length > 0 && !genreFilters.includes(a.genre)) return false;
+    if (activeCategories.length > 0 && !activeCategories.includes(a.genre)) return false;
     if (search && !a.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (geoInfo) {
       const cached = getCachedShows(a.tmName, a.tmId || null, locationOpts);
@@ -111,7 +111,7 @@ export default function SwanSong() {
     ? (geoLoading
         ? `Searching for shows near ${locationLabel}…`
         : `${visibleArtists.length} artist${visibleArtists.length !== 1 ? 's' : ''}`
-          + (genreFilters.length > 0 ? ` in ${genreFilters.join(' & ')}` : '')
+          + (activeCategories.length > 0 ? ` in ${activeCategories.join(' & ')}` : '')
           + (locationLabel ? ` with shows near ${locationLabel} within ${radius} mi` : '')
           + ' — click any to expand')
     : 'Click any artist to see their songs and upcoming shows worldwide. Enter a ZIP to find shows near you.';
@@ -121,8 +121,12 @@ export default function SwanSong() {
       <Hero />
 
       <FilterBar
-        genreFilters={genreFilters}
-        onToggleGenre={toggleGenre}
+        categories={GENRES}
+        categoryColors={GENRE_COLORS}
+        categoryLabel="Genre"
+        activeCategories={activeCategories}
+        onToggleCategory={toggleCategory}
+        showLocationSearch
         zipInput={zipInput}
         onZipChange={setZipInput}
         onZipSubmit={handleZipSubmit}
