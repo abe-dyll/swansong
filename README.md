@@ -52,3 +52,18 @@ Each artist's top songs show an estimated 0-100 "Song Score." It's a relative,
 normalized ranking within each genre — not a real stream count — since the
 song catalog is hardcoded and only the top track's playcount is fetched live.
 See the in-app footer for the full explanation.
+
+## Art Mode
+
+A paintbrush toggle (`?mode=art` in the URL) switches the same shell to a
+curated roster of legendary visual artists (60+, painters/sculptors/
+photographers/etc.), styled the same way but sourced from Wikipedia +
+Wikidata instead of Ticketmaster/Spotify/Last.fm — no API key required for
+this mode. See `docs/superpowers/specs/2026-07-11-art-mode-design.md` for
+the full design rationale, and `src/adapters/` for how a third mode could
+be added later without touching the shared shell (`Hero`, `FilterBar`,
+`Footer`, `App.jsx`).
+
+Art mode has no equivalent to Music's Song Score — there's no free,
+comprehensive art-market data source to approximate a ranking from, so Art
+cards show bio, notable works, and known collections with no numeric score.
