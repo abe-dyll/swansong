@@ -569,6 +569,42 @@ body {
   border-color: var(--accent-gold);
 }
 
+/* ---------- Art card ---------- */
+
+.art-card__bio-row {
+  display: flex;
+  gap: 14px;
+  margin-top: 14px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+
+.art-card__bio-row .work-image--thumb {
+  flex-shrink: 0;
+  width: 96px;
+}
+
+.art-card__bio-row .work-image--thumb img {
+  max-height: 96px;
+}
+
+.art-card__bio-text { flex: 1; min-width: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.6; }
+.art-card__wiki-link { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--accent-gold); }
+
+.art-card__section { margin-bottom: 16px; }
+
+.art-card__works {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.art-card__work-title { font-size: 12px; font-weight: 600; color: var(--ink); margin-top: 4px; }
+.art-card__work-institution { font-size: 11px; color: #9a7d5a; }
+
+.art-card__collections { list-style: none; font-size: 13px; color: var(--ink-soft); line-height: 1.8; }
+.art-card__collections-note { font-size: 11px; color: #b8a898; font-style: italic; margin-top: 6px; }
+
 @media (max-width: 480px) {
   .filter-bar__input--search { flex-basis: 100%; }
 }
