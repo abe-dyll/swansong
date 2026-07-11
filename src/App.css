@@ -133,6 +133,13 @@ body {
   border-radius: 50%;
 }
 
+.mode-toggle-row {
+  display: flex;
+  justify-content: center;
+  padding: 0 24px 16px;
+  background: linear-gradient(180deg, rgba(139, 105, 20, 0.04) 0%, transparent 100%);
+}
+
 .mode-toggle {
   display: inline-flex;
   align-items: center;

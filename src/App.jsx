@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
-import { ARTISTS, GENRES, GENRE_COLORS, RADIUS_OPTIONS, maxAge } from './data/artists';
+import musicAdapter from './adapters/musicAdapter';
+import artAdapter from './adapters/artAdapter';
+import { maxAge, RADIUS_OPTIONS } from './data/artists';
+import { computeAge } from './lib/age';
+import { getModeFromUrl, setModeInUrl } from './lib/urlMode';
 import { clearCaches, geocodeZip, getCachedShows, primeGenreMax, fetchShows } from './lib/api';
 import Hero from './components/Hero';
+import ModeToggle from './components/ModeToggle';
 import FilterBar from './components/FilterBar';
 import ArtistRow from './components/ArtistRow';
 import Footer from './components/Footer';
 
+const ADAPTERS = { music: musicAdapter, art: artAdapter };
+
 export default function SwanSong() {
-  const [activeCategories, setActiveCategories] = useState([]);
+  const [mode, setMode] = useState(() => getModeFromUrl());
+  const adapter = ADAPTERS[mode];
+
+  const [categoryFilters, setCategoryFilters] = useState([]);
   const [zipInput, setZipInput] = useState('');
   const [radius, setRadius] = useState(50);
   const [geoInfo, setGeoInfo] = useState(null);
@@ -17,18 +27,28 @@ export default function SwanSong() {
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState({});
 
-  // Prime genre score baselines silently on load, staggered to avoid
+  function switchMode(nextMode) {
+    setMode(nextMode);
+    setModeInUrl(nextMode);
+    setCategoryFilters([]);
+    setSearch('');
+    setExpanded({});
+    clearLocation();
+  }
+
+  // Prime Music's genre score baselines silently on load, staggered to avoid
   // hammering Last.fm, so scores are stable the first time a user expands
-  // an artist.
+  // an artist. Art mode has no equivalent priming step.
   useEffect(() => {
-    ARTISTS.forEach((artist, i) => {
+    if (mode !== 'music') return;
+    musicAdapter.roster.forEach((artist, i) => {
       setTimeout(() => primeGenreMax(artist.name, artist.genre), i * 80);
     });
-  }, []);
+  }, [mode]);
 
   const locationOpts = geoInfo ? { lat: geoInfo.lat, lng: geoInfo.lng, radius } : null;
   const locationLabel = geoInfo ? `${geoInfo.city}, ${geoInfo.state}` : null;
-  const filterActive = activeCategories.length > 0 || !!geoInfo || !!search;
+  const filterActive = categoryFilters.length > 0 || !!geoInfo || !!search;
 
   async function handleZipSubmit() {
     if (!zipInput || zipInput.length < 5) return;
@@ -47,12 +67,10 @@ export default function SwanSong() {
     setGeoInfo(info);
     setExpanded({});
 
-    const scope = activeCategories.length > 0
-      ? ARTISTS.filter((a) => activeCategories.includes(a.genre))
-      : ARTISTS;
+    const scope = categoryFilters.length > 0
+      ? adapter.roster.filter((a) => categoryFilters.includes(a.genre))
+      : adapter.roster;
 
-    // Fire all fetches and re-render after each resolves so artists with no
-    // shows progressively disappear rather than all appearing then vanishing.
     await Promise.all(scope.map(async (artist) => {
       await fetchShows(artist.tmName, artist.name, artist.tmId || null, opts);
       setGeoInfo((prev) => (prev ? { ...prev, _tick: Math.random() } : prev));
@@ -69,13 +87,13 @@ export default function SwanSong() {
     clearCaches();
   }
 
-  function toggleCategory(g) {
-    setActiveCategories((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  function toggleCategory(c) {
+    setCategoryFilters((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
     setExpanded({});
   }
 
   function clearAll() {
-    setActiveCategories([]);
+    setCategoryFilters([]);
     setSearch('');
     clearLocation();
   }
@@ -90,15 +108,24 @@ export default function SwanSong() {
     setExpanded({});
   }
 
+  const rosterAge = (entry) => (mode === 'music'
+    ? maxAge(entry)
+    : computeAge(entry.birthYear, entry.deathYear));
+
+  const rosterCategory = (entry) => (mode === 'music' ? entry.genre : entry.category);
+
   const allSorted = useMemo(
-    () => ARTISTS.slice().sort((a, b) => maxAge(b) - maxAge(a)),
-    [],
+    () => adapter.roster.slice().sort((a, b) => rosterAge(b) - rosterAge(a)),
+    [adapter],
   );
 
-  // When a location filter is active, hide artists confirmed to have zero
-  // shows in range — but keep them visible while loading or not yet fetched.
+  // When a location filter is active (Music only), hide artists confirmed to
+  // have zero shows in range — but keep them visible while loading or not
+  // yet fetched. Art mode has no location search, so `geoInfo` stays null
+  // there and this branch is a no-op.
   const visibleArtists = allSorted.filter((a) => {
-    if (activeCategories.length > 0 && !activeCategories.includes(a.genre)) return false;
+    if (adapter.ageDefaultFloor != null && rosterAge(a) < adapter.ageDefaultFloor) return false;
+    if (categoryFilters.length > 0 && !categoryFilters.includes(rosterCategory(a))) return false;
     if (search && !a.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (geoInfo) {
       const cached = getCachedShows(a.tmName, a.tmId || null, locationOpts);
@@ -110,23 +137,28 @@ export default function SwanSong() {
   const statusMessage = filterActive
     ? (geoLoading
         ? `Searching for shows near ${locationLabel}…`
-        : `${visibleArtists.length} artist${visibleArtists.length !== 1 ? 's' : ''}`
-          + (activeCategories.length > 0 ? ` in ${activeCategories.join(' & ')}` : '')
+        : `${visibleArtists.length} ${mode === 'music' ? 'artist' : 'artist'}${visibleArtists.length !== 1 ? 's' : ''}`
+          + (categoryFilters.length > 0 ? ` in ${categoryFilters.join(' & ')}` : '')
           + (locationLabel ? ` with shows near ${locationLabel} within ${radius} mi` : '')
           + ' — click any to expand')
-    : 'Click any artist to see their songs and upcoming shows worldwide. Enter a ZIP to find shows near you.';
+    : (mode === 'music'
+        ? 'Click any artist to see their songs and upcoming shows worldwide. Enter a ZIP to find shows near you.'
+        : 'Click any artist to see their story, notable works, and where to see them in person.');
 
   return (
     <div className="app">
-      <Hero />
+      <Hero tagline={adapter.tagline} />
+      <div className="mode-toggle-row">
+        <ModeToggle mode={mode} onToggle={switchMode} />
+      </div>
 
       <FilterBar
-        categories={GENRES}
-        categoryColors={GENRE_COLORS}
-        categoryLabel="Genre"
-        activeCategories={activeCategories}
+        categories={adapter.categories}
+        categoryColors={adapter.categoryColors}
+        categoryLabel={adapter.categoryLabel}
+        activeCategories={categoryFilters}
         onToggleCategory={toggleCategory}
-        showLocationSearch
+        showLocationSearch={adapter.showLocationSearch}
         zipInput={zipInput}
         onZipChange={setZipInput}
         onZipSubmit={handleZipSubmit}
@@ -148,19 +180,29 @@ export default function SwanSong() {
         <div className="artist-grid">
           {visibleArtists.map((artist, i) => (
             <div key={artist.name} className="artist-grid__item fade" style={{ animationDelay: `${Math.min(i * 0.02, 0.4)}s` }}>
-              <ArtistRow
-                artist={artist}
-                expanded={!!expanded[artist.name]}
-                onToggle={() => toggleExpand(artist.name)}
-                locationOpts={locationOpts}
-                locationLabel={locationLabel}
-              />
+              {mode === 'music' ? (
+                <ArtistRow
+                  artist={artist}
+                  expanded={!!expanded[artist.name]}
+                  onToggle={() => toggleExpand(artist.name)}
+                  locationOpts={locationOpts}
+                  locationLabel={locationLabel}
+                />
+              ) : (
+                <div className="artist-row">
+                  <button className="artist-row__header" onClick={() => toggleExpand(artist.name)}>
+                    <div className="artist-row__identity">
+                      <div className="artist-row__name">{artist.name}</div>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       </main>
 
-      <Footer />
+      <Footer mode={mode} />
     </div>
   );
 }

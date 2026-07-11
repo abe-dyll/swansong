@@ -1,4 +1,4 @@
-export default function Footer() {
+export default function Footer({ mode }) {
   return (
     <footer className="footer">
       <div className="footer__brand">SWAN SONG &middot; SEE THEM WHILE YOU CAN &middot; POWERED BY TICKETMASTER</div>
