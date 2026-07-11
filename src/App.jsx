@@ -10,6 +10,7 @@ import Hero from './components/Hero';
 import ModeToggle from './components/ModeToggle';
 import FilterBar from './components/FilterBar';
 import ArtistRow from './components/ArtistRow';
+import ArtCard from './components/ArtCard';
 import Footer from './components/Footer';
 
 const ADAPTERS = { music: musicAdapter, art: artAdapter };
@@ -189,13 +190,11 @@ export default function SwanSong() {
                   locationLabel={locationLabel}
                 />
               ) : (
-                <div className="artist-row">
-                  <button className="artist-row__header" onClick={() => toggleExpand(artist.name)}>
-                    <div className="artist-row__identity">
-                      <div className="artist-row__name">{artist.name}</div>
-                    </div>
-                  </button>
-                </div>
+                <ArtCard
+                  artist={artist}
+                  expanded={!!expanded[artist.name]}
+                  onToggle={() => toggleExpand(artist.name)}
+                />
               )}
             </div>
           ))}
