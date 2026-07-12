@@ -4,6 +4,7 @@ import { computeAge } from '../lib/age';
 import { fetchShows, fetchSpotifyInfo } from '../lib/api';
 import TrackRow from './TrackRow';
 import ShowCard from './ShowCard';
+import Avatar from './Avatar';
 
 export default function ArtistRow({ artist, expanded, onToggle, locationOpts, locationLabel }) {
   const panelId = useId();
@@ -15,7 +16,6 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
   const currentKey = artist.tmName + '__' + JSON.stringify(locationOpts || {});
 
   useEffect(() => {
-    if (!expanded) return;
     if (currentKey === loadKey && entry !== null) return;
     setLoadKey(currentKey);
     setEntry({ loading: true, shows: null });
@@ -23,10 +23,9 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
       setEntry({ loading: false, shows });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, currentKey]);
+  }, [currentKey]);
 
   useEffect(() => {
-    if (!expanded) return;
     if (spotifyInfo !== null || spotifyLoading) return;
     setSpotifyLoading(true);
     fetchSpotifyInfo(artist.name).then((info) => {
@@ -34,7 +33,7 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
       setSpotifyLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded]);
+  }, []);
 
   const age = maxAge(artist);
   const ac = ageColor(age);
@@ -51,9 +50,12 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
         aria-expanded={expanded}
         aria-controls={panelId}
       >
-        <div className="artist-row__stripe" style={{ background: ac }} aria-hidden="true" />
+        <Avatar src={spotifyInfo && spotifyInfo.spotifyImageUrl} name={artist.name} color={ac} />
         <div className="artist-row__identity">
           <div className="artist-row__name">{artist.name}</div>
+          <div className="artist-row__sub">
+            {artist.genre}{hasShows ? ` · ${shows.length} upcoming show${shows.length !== 1 ? 's' : ''}` : ''}
+          </div>
           {!isSolo && (
             <div className="artist-row__members">
               {artist.members.map((m) => (
@@ -64,16 +66,10 @@ export default function ArtistRow({ artist, expanded, onToggle, locationOpts, lo
             </div>
           )}
         </div>
-        {hasShows && <div className="artist-row__badge">{shows.length} show{shows.length !== 1 ? 's' : ''}</div>}
-        {isSolo && (
-          <div className="artist-row__age-circle" style={{ borderColor: ac, background: ac + '18', color: ac }}>
-            {artistHasPassed(artist) ? (
-              <span className="artist-row__memoriam">RIP</span>
-            ) : (
-              age
-            )}
-          </div>
-        )}
+        <div className="artist-row__age-badge" style={{ background: ac }}>
+          <span className="artist-row__age-badge-label">AGE</span>
+          <span className="artist-row__age-badge-num">{artistHasPassed(artist) ? 'RIP' : age}</span>
+        </div>
         <span className={`artist-row__chevron${expanded ? ' artist-row__chevron--open' : ''}`} aria-hidden="true">
           &#9662;
         </span>

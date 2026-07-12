@@ -381,8 +381,6 @@ body {
   font-family: inherit;
 }
 
-.artist-row__stripe { width: 4px; align-self: stretch; border-radius: 4px; flex-shrink: 0; }
-
 .artist-row__identity { flex: 1; min-width: 0; }
 
 .artist-row__name {
@@ -403,32 +401,35 @@ body {
 .artist-row__member { font-size: 13px; color: #8a6a50; }
 .artist-row__member span { font-weight: 700; }
 
-.artist-row__badge {
-  flex-shrink: 0;
-  background: var(--accent-rust);
-  color: white;
-  border-radius: 20px;
+.artist-row__sub {
+  font-family: 'Nunito', sans-serif;
   font-size: 12px;
-  font-weight: 700;
-  padding: 3px 10px;
-  margin-right: 6px;
-  white-space: nowrap;
+  color: var(--ink-faint);
+  margin-top: 2px;
 }
 
-.artist-row__age-circle {
+.artist-row__age-badge {
   flex-shrink: 0;
-  width: 46px; height: 46px;
-  border-radius: 50%;
-  border: 2px solid;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 17px; font-weight: 700;
-  font-family: 'Righteous', Georgia, serif;
+  padding: 5px 10px;
+  border-radius: 8px;
+  text-align: center;
+  color: #fff;
 }
 
-.artist-row__memoriam {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+.artist-row__age-badge-label {
+  display: block;
+  font-family: 'Nunito', sans-serif;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.artist-row__age-badge-num {
+  display: block;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .artist-row__chevron {
