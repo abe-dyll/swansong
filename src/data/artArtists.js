@@ -152,14 +152,14 @@ export const ART_CATEGORIES = [
 ];
 
 export const ART_CATEGORY_COLORS = {
-  'Painting – Contemporary': '#B33F1E',
-  'Painting – Abstract / Abstract Expressionism': '#8A5A2B',
-  'Impressionism / Post-Impressionism': '#4C6B8A',
-  'Modernism / Cubism': '#6B4A9E',
-  'Pop Art': '#C9971C',
-  'Surrealism': '#7A3B69',
-  'Sculpture': '#5C7A29',
-  'Photography': '#235148',
-  'Installation / Mixed Media': '#9E6B3F',
-  'Street Art': '#A63A2B',
+  'Painting – Contemporary': '#A6432B',
+  'Painting – Abstract / Abstract Expressionism': '#7A5230',
+  'Impressionism / Post-Impressionism': '#3F5A74',
+  'Modernism / Cubism': '#5C4184',
+  'Pop Art': '#B08619',
+  'Surrealism': '#6B3459',
+  'Sculpture': '#5C6B2E',
+  'Photography': '#1F4A42',
+  'Installation / Mixed Media': '#8A6035',
+  'Street Art': '#96362A',
 };

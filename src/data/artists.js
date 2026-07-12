@@ -212,11 +212,11 @@ export const RADIUS_OPTIONS = [25, 50, 100, 250];
 
 // Earthy, Woodstock-poster palette — one hue per genre
 export const GENRE_COLORS = {
-  'Rock': '#B33F1E',
-  'Country': '#B9860B',
-  'Jazz': '#235148',
-  'Soul/R&B': '#7A3B69',
-  'Pop': '#5C7A29',
+  'Rock': '#A6432B',
+  'Country': '#A67C1E',
+  'Jazz': '#1F4A42',
+  'Soul/R&B': '#6B3459',
+  'Pop': '#5C6B2E',
 };
 
 export function ageColor(age) {
