@@ -1,4 +1,4 @@
-async function getSpotifyArtistUrl(artistName, clientId, clientSecret) {
+async function getSpotifyArtistInfo(artistName, clientId, clientSecret) {
   try {
     var credentials = Buffer.from(clientId + ":" + clientSecret).toString("base64");
     var tokenRes = await fetch("https://accounts.spotify.com/api/token", {
@@ -6,15 +6,15 @@ async function getSpotifyArtistUrl(artistName, clientId, clientSecret) {
       headers: { "Authorization": "Basic " + credentials, "Content-Type": "application/x-www-form-urlencoded" },
       body: "grant_type=client_credentials"
     });
-    if (!tokenRes.ok) return null;
+    if (!tokenRes.ok) return { url: null, imageUrl: null };
     var tokenData = await tokenRes.json();
     var token = tokenData.access_token;
-    if (!token) return null;
+    if (!token) return { url: null, imageUrl: null };
 
     var searchRes = await fetch("https://api.spotify.com/v1/search?q=" + encodeURIComponent(artistName) + "&type=artist&limit=5", {
       headers: { "Authorization": "Bearer " + token }
     });
-    if (!searchRes.ok) return null;
+    if (!searchRes.ok) return { url: null, imageUrl: null };
     var searchData = await searchRes.json();
     var artists = (searchData && searchData.artists && searchData.artists.items) || [];
 
@@ -28,10 +28,18 @@ async function getSpotifyArtistUrl(artistName, clientId, clientSecret) {
       return (b.followers && b.followers.total || 0) - (a.followers && a.followers.total || 0);
     });
 
-    return pool.length > 0 ? (pool[0].external_urls && pool[0].external_urls.spotify) : null;
+    if (pool.length === 0) return { url: null, imageUrl: null };
+    var best = pool[0];
+    var images = best.images || [];
+    // Smallest available image is plenty for a 44px avatar circle — saves bandwidth.
+    var image = images.length > 0 ? images[images.length - 1] : null;
+    return {
+      url: (best.external_urls && best.external_urls.spotify) || null,
+      imageUrl: image ? image.url : null,
+    };
   } catch (e) {
     console.error("Spotify lookup failed:", e);
-    return null;
+    return { url: null, imageUrl: null };
   }
 }
 
@@ -68,11 +76,12 @@ export default async function handler(req, res) {
       };
     });
 
-    var spotifyUrl = await getSpotifyArtistUrl(artistName, spotifyClientId, spotifyClientSecret);
+    var spotifyInfo = await getSpotifyArtistInfo(artistName, spotifyClientId, spotifyClientSecret);
 
     return res.status(200).json({
       tracks: tracks,
-      spotifyUrl: spotifyUrl
+      spotifyUrl: spotifyInfo.url,
+      spotifyImageUrl: spotifyInfo.imageUrl
     });
   } catch (err) {
     console.error("artist-info failed for", artistName, err);
