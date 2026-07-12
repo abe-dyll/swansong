@@ -3,7 +3,9 @@ import { ART_ARTISTS, ART_CATEGORIES, ART_CATEGORY_COLORS } from '../data/artArt
 export default {
   id: 'art',
   label: 'Art',
-  tagline: 'Before the paint dries.',
+  eyebrow: 'For the hands that never stopped',
+  headline: 'The masters are still creating.',
+  subhead: 'Find where to see the gallery and museum works of the artists who shaped a movement, while they\'re still creating.',
   categories: ART_CATEGORIES,
   categoryColors: ART_CATEGORY_COLORS,
   categoryLabel: 'Movement',

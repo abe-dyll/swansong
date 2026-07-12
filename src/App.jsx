@@ -138,7 +138,7 @@ export default function SwanSong() {
 
   return (
     <div className="app">
-      <Hero tagline={adapter.tagline} />
+      <Hero mode={mode} eyebrow={adapter.eyebrow} headline={adapter.headline} subhead={adapter.subhead} />
       <div className="mode-toggle-row">
         <ModeToggle mode={mode} onToggle={switchMode} />
       </div>

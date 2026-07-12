@@ -66,68 +66,86 @@ body {
 
 .hero {
   position: relative;
-  text-align: center;
-  padding: 32px 24px 24px;
-  border-bottom: 2px solid var(--card-border);
-  overflow: hidden;
+  padding: 34px 26px 30px;
+  background-size: cover;
+  background-position: center;
 }
 
-.hero__sunburst {
-  position: absolute;
-  inset: -20% -20% auto -20%;
-  height: 260px;
-  background: repeating-conic-gradient(
-    from 0deg,
-    rgba(201, 151, 28, 0.14) 0deg 8deg,
-    rgba(179, 63, 30, 0.08) 8deg 16deg,
-    transparent 16deg 24deg
-  );
-  border-radius: 50%;
-  z-index: 0;
-  pointer-events: none;
+.hero--music {
+  background-image: url('./assets/hero-background.png');
+  background-position: 60% center;
 }
 
-.hero > * { position: relative; z-index: 1; }
+@media (max-width: 640px) {
+  .hero--music {
+    /* Mobile is the primary platform; the artwork doesn't crop cleanly at
+       phone widths, so prioritize keeping the text legible over keeping
+       the full illustration visible. See the design spec's Hero section. */
+    background-position: 15% center;
+  }
+}
 
-.hero__mark { display: inline-block; margin-bottom: 8px; }
+.hero--art {
+  background: linear-gradient(160deg, #f2e8ce 0%, #e8dcc0 100%);
+}
 
-.hero__title {
-  font-size: clamp(48px, 9vw, 88px);
-  font-family: 'Righteous', 'Georgia', serif;
-  letter-spacing: -0.01em;
-  line-height: 1;
+.hero__inner { max-width: 480px; }
+
+.hero__brand {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.08em;
   color: var(--ink);
-  margin-bottom: 10px;
-  text-shadow: 2px 3px 0px rgba(139, 105, 20, 0.2);
 }
 
-.hero__tagline {
-  font-family: 'Kalam', 'Georgia', serif;
-  font-size: clamp(16px, 2.2vw, 22px);
+.hero__eyebrow {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--ink-soft);
-  letter-spacing: 0.02em;
+  margin-top: 14px;
+}
+
+.hero__headline {
+  font-family: 'Zilla Slab', serif;
+  font-weight: 700;
+  font-size: clamp(28px, 6vw, 40px);
+  color: var(--ink);
+  line-height: 1.05;
+  margin-top: 6px;
+}
+
+.hero__subhead {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--ink-soft);
   line-height: 1.5;
-  margin-bottom: 24px;
+  margin-top: 10px;
+  max-width: 380px;
 }
 
 .hero__legend {
   display: flex;
-  justify-content: center;
-  gap: 28px;
+  gap: 20px;
   flex-wrap: wrap;
+  margin-top: 18px;
 }
 
 .hero__legend-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ink-faint);
   font-weight: 600;
 }
 
 .hero__legend-dot {
-  width: 11px; height: 11px;
+  width: 10px; height: 10px;
   border-radius: 50%;
 }
 
