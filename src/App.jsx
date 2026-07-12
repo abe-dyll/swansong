@@ -83,6 +83,11 @@ export default function SwanSong() {
     setExpanded({});
   }
 
+  function clearCategories() {
+    setCategoryFilters([]);
+    setExpanded({});
+  }
+
   function clearAll() {
     setCategoryFilters([]);
     setSearch('');
@@ -149,6 +154,7 @@ export default function SwanSong() {
         categoryLabel={adapter.categoryLabel}
         activeCategories={categoryFilters}
         onToggleCategory={toggleCategory}
+        onClearCategories={clearCategories}
         showLocationSearch={adapter.showLocationSearch}
         zipInput={zipInput}
         onZipChange={setZipInput}

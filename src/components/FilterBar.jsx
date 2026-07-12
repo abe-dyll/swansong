@@ -1,6 +1,6 @@
 export default function FilterBar({
   categories, categoryColors, categoryLabel,
-  activeCategories, onToggleCategory,
+  activeCategories, onToggleCategory, onClearCategories,
   showLocationSearch,
   zipInput, onZipChange, onZipSubmit, geoLoading,
   radius, onRadiusChange, radiusOptions,
@@ -13,6 +13,14 @@ export default function FilterBar({
       <div className="filter-bar__inner">
         <div className="filter-bar__row" role="group" aria-label={`Filter by ${categoryLabel.toLowerCase()}`}>
           <span className="filter-bar__label">{categoryLabel}</span>
+          <button
+            type="button"
+            className={`genre-pill genre-pill--all${activeCategories.length === 0 ? ' genre-pill--active' : ''}`}
+            onClick={onClearCategories}
+            aria-pressed={activeCategories.length === 0}
+          >
+            All
+          </button>
           {categories.map((c) => {
             const active = activeCategories.includes(c);
             return (
@@ -20,7 +28,7 @@ export default function FilterBar({
                 key={c}
                 type="button"
                 className={`genre-pill${active ? ' genre-pill--active' : ''}`}
-                style={active ? { background: categoryColors[c], borderColor: categoryColors[c] } : { '--pill-color': categoryColors[c] }}
+                style={{ background: categoryColors[c] }}
                 onClick={() => onToggleCategory(c)}
                 aria-pressed={active}
               >
@@ -74,13 +82,19 @@ export default function FilterBar({
             </>
           )}
           <label className="sr-only" htmlFor="artist-search">Search by name</label>
-          <input
-            id="artist-search"
-            className="filter-bar__input filter-bar__input--search"
-            placeholder="Search by name…"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
+          <div className="filter-bar__search-wrap">
+            <svg className="filter-bar__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              id="artist-search"
+              className="filter-bar__input filter-bar__input--search"
+              placeholder="Search by name…"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+          </div>
           {filterActive && (
             <button type="button" className="filter-bar__clear" onClick={onClearAll}>Clear all</button>
           )}
