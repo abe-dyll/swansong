@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { ageColor } from '../data/artists';
 import { computeAge, hasPassed } from '../lib/age';
 import { fetchArtInfo } from '../lib/artApi';
+import Avatar from './Avatar';
 import WorkImage from './WorkImage';
 
 export default function ArtCard({ artist, expanded, onToggle }) {
@@ -10,7 +11,6 @@ export default function ArtCard({ artist, expanded, onToggle }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!expanded) return;
     if (info !== null || loading) return;
     setLoading(true);
     fetchArtInfo(artist.wikidataId, artist.name).then((data) => {
@@ -18,7 +18,7 @@ export default function ArtCard({ artist, expanded, onToggle }) {
       setLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded]);
+  }, []);
 
   const age = computeAge(artist.birthYear, artist.deathYear);
   const ac = ageColor(age);
@@ -32,19 +32,16 @@ export default function ArtCard({ artist, expanded, onToggle }) {
         aria-expanded={expanded}
         aria-controls={panelId}
       >
-        <div className="artist-row__stripe" style={{ background: ac }} aria-hidden="true" />
+        <Avatar src={info && info.thumbnail} name={artist.name} color={ac} />
         <div className="artist-row__identity">
           <div className="artist-row__name">{artist.name}</div>
-          <div className="artist-row__members">
-            <span className="artist-row__member">{artist.category}</span>
-          </div>
+          <div className="artist-row__sub">{artist.category}</div>
         </div>
-        <div className="artist-row__age-circle" style={{ borderColor: ac, background: ac + '18', color: ac }}>
-          {passed ? <span className="artist-row__memoriam">RIP</span> : age}
+        <div className="artist-row__age-badge" style={{ background: ac }}>
+          <span className="artist-row__age-badge-label">AGE</span>
+          <span className="artist-row__age-badge-num">{passed ? 'RIP' : age}</span>
         </div>
-        <span className={`artist-row__chevron${expanded ? ' artist-row__chevron--open' : ''}`} aria-hidden="true">
-          &#9662;
-        </span>
+        <span className={`artist-row__chevron${expanded ? ' artist-row__chevron--open' : ''}`} aria-hidden="true">&#9662;</span>
       </button>
 
       {expanded && (
